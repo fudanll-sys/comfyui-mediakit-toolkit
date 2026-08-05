@@ -8,6 +8,7 @@ from typing import Any
 from .cli import (
     build_enhance_arguments,
     build_erase_subtitle_arguments,
+    build_generative_enhance_arguments,
     build_query_arguments,
     run_cli_async,
 )
@@ -79,6 +80,28 @@ async def erase_video_subtitle(
             erase_region=erase_region,
         ),
         capability=capability,
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def enhance_video_generative(
+    video_path: Path,
+    *,
+    resolution: str,
+    bitrate_level: str,
+    fps: float,
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    return await _run_cloud_video_task(
+        build_generative_enhance_arguments(
+            str(video_path),
+            resolution=resolution,
+            bitrate_level=bitrate_level,
+            fps=fps,
+        ),
+        capability="enhance-video-generative",
         poll_interval_seconds=poll_interval_seconds,
         max_poll_attempts=max_poll_attempts,
     )

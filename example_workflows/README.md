@@ -13,6 +13,13 @@ erasure:
 Load Video → MediaKit Erase Video Subtitle Pro → Save Video
 ```
 
+`mediakit_video_enhance_generative.json` demonstrates large-model video
+restoration:
+
+```text
+Load Video → MediaKit Video Enhance Generative → Save Video
+```
+
 The workflows require a recent ComfyUI build that includes the native
 `LoadVideo` and `SaveVideo` nodes. Select your own authorized MP4 input after
 importing one. Running either workflow submits a paid MediaKit cloud task.

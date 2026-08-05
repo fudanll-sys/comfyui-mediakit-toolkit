@@ -6,6 +6,7 @@ from unittest.mock import patch
 from mediakit_toolkit.cli import (
     build_enhance_arguments,
     build_erase_subtitle_arguments,
+    build_generative_enhance_arguments,
     build_query_arguments,
     parse_final_json,
     run_cli,
@@ -66,6 +67,36 @@ class CommandBuilderTests(unittest.TestCase):
         )
         self.assertEqual(args[args.index("--fps") + 1], "60")
         self.assertEqual(args[args.index("--bitrate-level") + 1], "high")
+
+    def test_generative_enhance_uses_dedicated_tool(self):
+        args = build_generative_enhance_arguments(
+            "/tmp/input.mp4",
+            resolution="1080p",
+            bitrate_level="high",
+            fps=30,
+        )
+        self.assertEqual(
+            args[:3], ["--cloud", "video", "enhance-video-generative"]
+        )
+        self.assertEqual(args[args.index("--resolution") + 1], "1080p")
+        self.assertEqual(args[args.index("--fps") + 1], "30")
+
+    def test_generative_enhance_rejects_unsupported_resolution(self):
+        with self.assertRaises(MediaKitInputError):
+            build_generative_enhance_arguments(
+                "/tmp/input.mp4",
+                resolution="4k",
+                bitrate_level="medium",
+            )
+
+    def test_generative_enhance_rejects_low_nonzero_fps(self):
+        with self.assertRaises(MediaKitInputError):
+            build_generative_enhance_arguments(
+                "/tmp/input.mp4",
+                resolution="720p",
+                bitrate_level="medium",
+                fps=10,
+            )
 
     def test_query_is_blocking_and_bounded(self):
         args = build_query_arguments(

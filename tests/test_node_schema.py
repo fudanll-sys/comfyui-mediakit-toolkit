@@ -85,6 +85,7 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
             [
                 "MediaKitEnvironmentCheck",
                 "MediaKitVideoEnhance",
+                "MediaKitVideoEnhanceGenerative",
                 "MediaKitEraseVideoSubtitle",
                 "MediaKitEraseVideoSubtitlePro",
             ],
@@ -105,8 +106,9 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
-    def test_subtitle_nodes_use_native_video_input_and_output(self):
+    def test_video_ai_nodes_use_native_video_input_and_output(self):
         for node in (
+            self.extension.MediaKitVideoEnhanceGenerative,
             self.extension.MediaKitEraseVideoSubtitle,
             self.extension.MediaKitEraseVideoSubtitlePro,
         ):
@@ -114,6 +116,37 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsInstance(schema.inputs[0], _Input)
             self.assertEqual(schema.inputs[0].id, "video")
             self.assertIsInstance(schema.outputs[0], _Output)
+
+    async def test_generative_node_maps_quality_parameters(self):
+        video_ai = importlib.import_module("mediakit_toolkit.nodes.video_ai")
+        with (
+            patch.object(
+                video_ai,
+                "materialize_video",
+                return_value=nullcontext(Path("/tmp/input.mp4")),
+            ),
+            patch.object(
+                video_ai,
+                "enhance_video_generative",
+                new_callable=AsyncMock,
+                return_value=("https://example.com/ai.mp4", "task-ai"),
+            ) as enhance,
+            patch.object(
+                video_ai,
+                "download_video_output",
+                new_callable=AsyncMock,
+                return_value=object(),
+            ),
+        ):
+            await video_ai.MediaKitVideoEnhanceGenerative.execute(
+                object(),
+                resolution="1080p",
+                bitrate_level="high",
+                fps=60,
+            )
+        self.assertEqual(enhance.await_args.kwargs["resolution"], "1080p")
+        self.assertEqual(enhance.await_args.kwargs["bitrate_level"], "high")
+        self.assertEqual(enhance.await_args.kwargs["fps"], 60)
 
     async def test_pro_subtitle_node_maps_optional_region(self):
         video_ai = importlib.import_module("mediakit_toolkit.nodes.video_ai")

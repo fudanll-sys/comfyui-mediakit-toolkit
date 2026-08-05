@@ -213,6 +213,41 @@ def build_enhance_arguments(
     return arguments
 
 
+def build_generative_enhance_arguments(
+    video_path: str,
+    *,
+    resolution: str,
+    bitrate_level: str,
+    fps: float = 0.0,
+) -> list[str]:
+    """Build the official generative video restoration command."""
+    if resolution not in {"720p", "1080p"}:
+        raise MediaKitInputError(
+            f"大模型画质增强仅支持 720p 或 1080p，当前为：{resolution}"
+        )
+    if bitrate_level not in {"low", "medium", "high"}:
+        raise MediaKitInputError(f"不支持的码率档位：{bitrate_level}")
+    if fps != 0 and not 15 <= fps <= 120:
+        raise MediaKitInputError(
+            "大模型画质增强帧率必须为 0（保持原值）或 15 到 120。"
+        )
+
+    arguments = [
+        "--cloud",
+        "video",
+        "enhance-video-generative",
+        "--video-url",
+        video_path,
+        "--resolution",
+        resolution,
+        "--bitrate-level",
+        bitrate_level,
+    ]
+    if fps > 0:
+        arguments.extend(["--fps", str(fps)])
+    return arguments
+
+
 def build_erase_subtitle_arguments(
     video_path: str,
     *,

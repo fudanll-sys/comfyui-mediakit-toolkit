@@ -5,7 +5,11 @@ from __future__ import annotations
 from comfy_api.latest import io
 
 from ..media_bridge import download_video_output, materialize_video
-from ..orchestrator import enhance_video, erase_video_subtitle
+from ..orchestrator import (
+    enhance_video,
+    enhance_video_generative,
+    erase_video_subtitle,
+)
 
 
 class MediaKitVideoEnhance(io.ComfyNode):
@@ -141,6 +145,76 @@ class MediaKitEraseVideoSubtitle(io.ComfyNode):
             result_url, _task_id = await erase_video_subtitle(
                 video_path,
                 professional=False,
+                poll_interval_seconds=poll_interval_seconds,
+                max_poll_attempts=max_poll_attempts,
+            )
+        return io.NodeOutput(await download_video_output(result_url))
+
+
+class MediaKitVideoEnhanceGenerative(io.ComfyNode):
+    @classmethod
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="MediaKitVideoEnhanceGenerative",
+            display_name="MediaKit Video Enhance Generative",
+            category="MediaKit/Video AI",
+            description=(
+                "使用 MediaKit 扩散大模型主动补全视频细节并进行生成式增强修复。"
+            ),
+            inputs=[
+                io.Video.Input("video"),
+                io.Combo.Input(
+                    "resolution",
+                    options=["720p", "1080p"],
+                    default="720p",
+                ),
+                io.Combo.Input(
+                    "bitrate_level",
+                    options=["low", "medium", "high"],
+                    default="medium",
+                ),
+                io.Float.Input(
+                    "fps",
+                    default=0.0,
+                    min=0.0,
+                    max=120.0,
+                    step=1.0,
+                    tooltip="0 保持源帧率；指定时必须为 15–120 fps。",
+                ),
+                io.Int.Input(
+                    "poll_interval_seconds",
+                    default=10,
+                    min=2,
+                    max=60,
+                    advanced=True,
+                ),
+                io.Int.Input(
+                    "max_poll_attempts",
+                    default=720,
+                    min=1,
+                    max=5000,
+                    advanced=True,
+                ),
+            ],
+            outputs=[io.Video.Output(display_name="video")],
+        )
+
+    @classmethod
+    async def execute(
+        cls,
+        video: object,
+        resolution: str,
+        bitrate_level: str,
+        fps: float,
+        poll_interval_seconds: int = 10,
+        max_poll_attempts: int = 720,
+    ) -> io.NodeOutput:
+        with materialize_video(video) as video_path:
+            result_url, _task_id = await enhance_video_generative(
+                video_path,
+                resolution=resolution,
+                bitrate_level=bitrate_level,
+                fps=fps,
                 poll_interval_seconds=poll_interval_seconds,
                 max_poll_attempts=max_poll_attempts,
             )
