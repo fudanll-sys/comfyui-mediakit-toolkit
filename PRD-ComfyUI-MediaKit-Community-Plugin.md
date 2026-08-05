@@ -56,7 +56,7 @@ PRD-ComfyUI-MediaKit-Video-Enhance.md
 
 ```text
 Load Video
-→ MediaKit Video Enhance
+→ Enhance · 视频增强
 → MediaKit Erase Video Subtitle
 → Save Video
 ```
@@ -161,7 +161,7 @@ MediaKitEnvironmentCheck
 
 ## 5.2 首版视频 AI 节点
 
-### Enhance · 视频增强（极速版）
+### Enhance · 视频增强
 
 - 能力：标准版/专业版视频画质增强；
 - 输入：原生 `VIDEO`；

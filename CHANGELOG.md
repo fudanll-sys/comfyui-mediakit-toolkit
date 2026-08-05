@@ -4,6 +4,10 @@
 
 - Shorten the four video AI node titles with consistent bilingual labels while
   preserving their internal node IDs and existing workflow compatibility.
+- Rename the current enhancement node to `Enhance · 视频增强`, reserving the
+  fast-edition label for a future dedicated capability.
+- Add Chinese and English README files with AI MediaKit activation, API key,
+  installation, billing, privacy, and troubleshooting guidance.
 
 ## 0.2.1 - 2026-08-05
 

@@ -3,7 +3,7 @@
 `mediakit_video_enhance.json` demonstrates the intended enhancement graph:
 
 ```text
-Load Video → Enhance · 视频增强（极速版） → Save Video
+Load Video → Enhance · 视频增强 → Save Video
 ```
 
 `mediakit_erase_video_subtitle_pro.json` demonstrates professional subtitle

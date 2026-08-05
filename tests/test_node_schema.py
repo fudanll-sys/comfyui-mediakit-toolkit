@@ -93,7 +93,7 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
 
     def test_video_ai_nodes_use_short_bilingual_display_names(self):
         expected = {
-            "MediaKitVideoEnhance": "Enhance · 视频增强（极速版）",
+            "MediaKitVideoEnhance": "Enhance · 视频增强",
             "MediaKitVideoEnhanceGenerative": (
                 "Enhance Ultra · 视频增强（大模型版）"
             ),

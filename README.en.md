@@ -1,0 +1,231 @@
+# ComfyUI MediaKit Toolkit
+
+[简体中文](./README.md) | [English](./README.en.md)
+
+An unofficial community integration that exposes
+[Volcengine AI MediaKit](https://www.volcengine.com/docs/6448) cloud video AI
+capabilities as native [ComfyUI](https://github.com/comfyanonymous/ComfyUI)
+nodes. Local upload, asynchronous task polling, and result download are handled
+inside each node.
+
+> Cloud nodes require your own Volcengine account and AI MediaKit API key and
+> may incur charges. Videos are uploaded directly from your local ComfyUI
+> installation to Volcengine and never pass through a server operated by this
+> plugin's maintainers.
+
+## Status
+
+Version `0.2.1` currently provides:
+
+| Node | Description |
+| --- | --- |
+| `MediaKit Environment Check` | Checks MediaKit CLI, authentication, and the runtime environment. |
+| `Enhance · 视频增强` | Standard or professional video enhancement with native `VIDEO → VIDEO`. |
+| `Enhance Ultra · 视频增强（大模型版）` | Diffusion-based generative video restoration. |
+| `Erase Subtitle · 字幕擦除` | Automatic hard-subtitle detection and removal. |
+| `Erase Subtitle Pro · 字幕擦除（增强版）` | Advanced subtitle/text removal with optional region control. |
+
+`Enhance · 视频增强` is not the fast edition. A dedicated fast-enhancement
+capability has not been integrated yet and will use a separate node name when
+it becomes available.
+
+## Requirements
+
+- A recent ComfyUI version with the V3 native `VIDEO` API.
+- Python 3.10 or newer.
+- Node.js 18 or newer to install the official MediaKit CLI.
+- An activated AI MediaKit service and API key.
+- `mediakit-cli` available to the process that launches ComfyUI.
+
+## Activate AI MediaKit
+
+This plugin does not provide a MediaKit account, credits, or billing proxy.
+Complete these steps before first use:
+
+1. Register or sign in to Volcengine. Complete identity verification if the
+   console requests it.
+2. Open the [AI MediaKit console](https://console.volcengine.com/imp/ai-mediakit/settings).
+3. Follow the console prompts to activate the service and accept the relevant
+   terms. Existing users can skip this step.
+4. Create or copy an AI MediaKit API key from the console.
+5. Store the key securely. Never commit it to GitHub, put it in workflow JSON,
+   or share it with other people.
+
+Cloud capabilities may be billed by actual usage. Available credits, service
+regions, and current pricing are governed by the Volcengine console and
+[official documentation](https://www.volcengine.com/docs/6448).
+
+## Install and configure MediaKit CLI
+
+Install the official Volcengine CLI:
+
+```bash
+npx @volcengine/mediakit-cli install -y
+```
+
+Initialize it with your API key:
+
+```bash
+mediakit-cli init \
+  --mode cloud-first \
+  --api-key "YOUR_MEDIAKIT_API_KEY" \
+  --credential-store config \
+  --yes
+```
+
+Check the version, cloud connectivity, and local dependencies:
+
+```bash
+mediakit-cli doctor
+mediakit-cli version
+```
+
+Alternatively, expose the key only to the process that launches ComfyUI:
+
+```bash
+export MEDIAKIT_API_KEY="YOUR_MEDIAKIT_API_KEY"
+```
+
+See [volcengine/mediakit-cli](https://github.com/volcengine/mediakit-cli) for
+the official installation and authentication guidance.
+
+## Install the plugin
+
+Open the ComfyUI `custom_nodes` directory:
+
+```bash
+cd /path/to/ComfyUI/custom_nodes
+git clone https://github.com/fudanll-sys/comfyui-mediakit-toolkit.git
+```
+
+Fully restart ComfyUI after installation. The nodes appear under
+`MediaKit/Video AI` and can be found by searching for `MediaKit`, `Enhance`, or
+`Erase Subtitle`.
+
+The plugin has not been published to the ComfyUI Registry yet, so use GitHub
+installation for now.
+
+### Update
+
+Run this command from the ComfyUI root directory:
+
+```bash
+git -C custom_nodes/comfyui-mediakit-toolkit pull --ff-only origin main
+```
+
+Fully restart ComfyUI after updating.
+
+## Quick start
+
+Run the diagnostic node first:
+
+```text
+MediaKit Environment Check
+```
+
+Basic enhancement:
+
+```text
+Load Video
+    ↓ VIDEO
+Enhance · 视频增强
+    ↓ VIDEO
+Save Video
+```
+
+Large-model enhancement:
+
+```text
+Load Video
+    ↓ VIDEO
+Enhance Ultra · 视频增强（大模型版）
+    ↓ VIDEO
+Save Video
+```
+
+Subtitle removal:
+
+```text
+Load Video
+    ↓ VIDEO
+Erase Subtitle Pro · 字幕擦除（增强版）
+    ↓ VIDEO
+Save Video
+```
+
+Importable workflows are available in [`example_workflows`](./example_workflows).
+Select your own authorized local video after importing one.
+
+## Node parameters
+
+### Enhance · 视频增强
+
+- `tool_version`: `standard` or `professional`.
+- `scene`: common, UGC, short series, AIGC, or old film; used by the standard
+  edition only.
+- `resolution`: preserve the source or request 240p through 4K.
+- `bitrate_level`: low, medium, or high target bitrate.
+- `fps`: `0` preserves the source frame rate; a target up to 120 fps can also
+  be requested.
+
+### Enhance Ultra · 视频增强（大模型版）
+
+- `resolution`: 720p or 1080p.
+- `bitrate_level`: low, medium, or high target bitrate.
+- `fps`: `0` preserves the source; specified values must be 15–120 fps.
+
+### Erase Subtitle Pro · 字幕擦除（增强版）
+
+- `erase_mode`: remove subtitles only, or include other rendered text.
+- `output_encode_mode`: prioritize quality or output size.
+- `restrict_region`: process only text inside a normalized rectangle.
+
+Polling interval and maximum attempts are advanced settings and should
+normally remain at their defaults.
+
+## Billing, privacy, and security
+
+- Every video AI node submits a cloud task to the user's own MediaKit account.
+- Running a node may incur charges. Review the capability and parameters first.
+- Input media is uploaded directly to Volcengine AI MediaKit.
+- Plugin maintainers do not proxy, store, or inspect user media.
+- The plugin never writes the API key into workflow data.
+- Diagnostic logs remove API keys and signed-URL query parameters.
+- Process only media you are authorized to upload and transform.
+
+## Troubleshooting
+
+### `mediakit-cli` is not found
+
+Confirm that `mediakit-cli version` works in the same environment used to
+launch ComfyUI. Desktop applications may not inherit your terminal PATH, so
+you may need to launch ComfyUI from a terminal configured for the CLI.
+
+### Authentication fails
+
+Run `mediakit-cli init` again, or ensure the ComfyUI process receives
+`MEDIAKIT_API_KEY`. Never paste a complete API key into public logs.
+
+### Nodes do not appear
+
+Upgrade ComfyUI and inspect its startup log for plugin import errors. This
+plugin requires `comfy_api.latest` and native video nodes.
+
+### A cloud task times out
+
+The task may still be active in MediaKit. Use the redacted task ID in the local
+ComfyUI log for further diagnosis.
+
+## Development and tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Unit tests mock MediaKit CLI and never submit a paid cloud task. Real capability
+validation must be performed manually with a short, authorized test video.
+
+## License
+
+[MIT](./LICENSE). This is an unofficial community integration and is not an
+official Volcengine or ComfyUI product.

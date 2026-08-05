@@ -17,7 +17,7 @@ class MediaKitVideoEnhance(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="MediaKitVideoEnhance",
-            display_name="Enhance · 视频增强（极速版）",
+            display_name="Enhance · 视频增强",
             category="MediaKit/Video AI",
             description="使用火山引擎 AI MediaKit 标准版或专业版增强视频画质。",
             inputs=[
