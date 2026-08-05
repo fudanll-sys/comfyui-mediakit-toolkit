@@ -1,0 +1,29 @@
+[project]
+name = "mediakit-toolkit"
+version = "0.1.0"
+description = "Community ComfyUI nodes for Volcengine AI MediaKit"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = []
+readme = "README.md"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Repository = "https://github.com/fudanll-sys/comfyui-mediakit-toolkit"
+Documentation = "https://github.com/fudanll-sys/comfyui-mediakit-toolkit#readme"
+Issues = "https://github.com/fudanll-sys/comfyui-mediakit-toolkit/issues"
+
+[tool.comfy]
+PublisherId = "replace-before-publish"
+DisplayName = "MediaKit Toolkit"
+requires-comfyui = ">=0.3.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
