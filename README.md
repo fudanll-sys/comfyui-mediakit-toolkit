@@ -15,12 +15,12 @@ node implementation.
 Version `0.2.1` is an early development release. It currently includes:
 
 - **MediaKit Environment Check** — checks the local CLI and configuration.
-- **MediaKit Video Enhance** — native ComfyUI `VIDEO` input and `VIDEO`
+- **Enhance · 视频增强（极速版）** — native ComfyUI `VIDEO` input and `VIDEO`
   output using MediaKit standard or professional enhancement.
-- **MediaKit Video Enhance Generative** — diffusion-based large-model video
+- **Enhance Ultra · 视频增强（大模型版）** — diffusion-based large-model video
   restoration with 720p/1080p output, bitrate control, and optional target fps.
-- **MediaKit Erase Video Subtitle** — standard hard-subtitle erasure.
-- **MediaKit Erase Video Subtitle Pro** — higher-quality erasure with subtitle
+- **Erase Subtitle · 字幕擦除** — standard hard-subtitle erasure.
+- **Erase Subtitle Pro · 字幕擦除（增强版）** — higher-quality erasure with subtitle
   or rendered-text modes, output encoding preference, and an optional region.
 
 Planned modules include additional video AI, video editing, audio processing,
@@ -94,7 +94,7 @@ The basic video workflow is:
 ```text
 Load Video
     ↓ VIDEO
-MediaKit Video Enhance
+Enhance · 视频增强（极速版）
     ↓ VIDEO
 Save Video
 ```
@@ -104,9 +104,9 @@ Subtitle erasure can be inserted before or after enhancement:
 ```text
 Load Video
     ↓ VIDEO
-MediaKit Erase Video Subtitle Pro
+Erase Subtitle Pro · 字幕擦除（增强版）
     ↓ VIDEO
-MediaKit Video Enhance
+Enhance · 视频增强（极速版）
     ↓ VIDEO
 Save Video
 ```

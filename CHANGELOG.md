@@ -1,6 +1,11 @@
 # Changelog
 
-## 0.2.1 - Unreleased
+## Unreleased
+
+- Shorten the four video AI node titles with consistent bilingual labels while
+  preserving their internal node IDs and existing workflow compatibility.
+
+## 0.2.1 - 2026-08-05
 
 - Add native `VIDEO` to `VIDEO` generative large-model enhancement.
 - Validate the official 720p/1080p, bitrate, and optional 15–120 fps inputs

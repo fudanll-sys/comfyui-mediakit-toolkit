@@ -91,6 +91,26 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
+    def test_video_ai_nodes_use_short_bilingual_display_names(self):
+        expected = {
+            "MediaKitVideoEnhance": "Enhance · 视频增强（极速版）",
+            "MediaKitVideoEnhanceGenerative": (
+                "Enhance Ultra · 视频增强（大模型版）"
+            ),
+            "MediaKitEraseVideoSubtitle": "Erase Subtitle · 字幕擦除",
+            "MediaKitEraseVideoSubtitlePro": (
+                "Erase Subtitle Pro · 字幕擦除（增强版）"
+            ),
+        }
+        for node in (
+            self.extension.MediaKitVideoEnhance,
+            self.extension.MediaKitVideoEnhanceGenerative,
+            self.extension.MediaKitEraseVideoSubtitle,
+            self.extension.MediaKitEraseVideoSubtitlePro,
+        ):
+            schema = node.define_schema()
+            self.assertEqual(schema.display_name, expected[schema.node_id])
+
     def test_video_enhance_uses_native_video_input_and_output(self):
         schema = self.extension.MediaKitVideoEnhance.define_schema()
         self.assertIsInstance(schema.inputs[0], _Input)
