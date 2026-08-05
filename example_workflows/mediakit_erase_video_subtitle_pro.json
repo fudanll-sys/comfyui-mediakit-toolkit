@@ -1,0 +1,63 @@
+{
+  "id": "6f3f63ce-d1d5-4c70-b817-f36ea4c44d77",
+  "revision": 0,
+  "last_node_id": 3,
+  "last_link_id": 2,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadVideo",
+      "pos": [40, 120],
+      "size": [300, 120],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {"name": "video", "type": "VIDEO", "links": [1]}
+      ],
+      "properties": {"Node name for S&R": "LoadVideo"},
+      "widgets_values": []
+    },
+    {
+      "id": 2,
+      "type": "MediaKitEraseVideoSubtitlePro",
+      "pos": [400, 120],
+      "size": [380, 340],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"name": "video", "type": "VIDEO", "link": 1}
+      ],
+      "outputs": [
+        {"name": "video", "type": "VIDEO", "links": [2]}
+      ],
+      "properties": {"Node name for S&R": "MediaKitEraseVideoSubtitlePro"},
+      "widgets_values": ["Subtitle", "Quality", false, 0.0, 0.5, 1.0, 1.0, 10, 720]
+    },
+    {
+      "id": 3,
+      "type": "SaveVideo",
+      "pos": [840, 120],
+      "size": [300, 160],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {"name": "video", "type": "VIDEO", "link": 2}
+      ],
+      "outputs": [],
+      "properties": {"Node name for S&R": "SaveVideo"},
+      "widgets_values": []
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "VIDEO"],
+    [2, 2, 0, 3, 0, "VIDEO"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
