@@ -12,13 +12,16 @@ node implementation.
 
 ## Status
 
-Version `0.1.0` is an early development release. It currently includes:
+Version `0.2.0` is an early development release. It currently includes:
 
 - **MediaKit Environment Check** — checks the local CLI and configuration.
 - **MediaKit Video Enhance** — native ComfyUI `VIDEO` input and `VIDEO`
   output using MediaKit standard or professional enhancement.
+- **MediaKit Erase Video Subtitle** — standard hard-subtitle erasure.
+- **MediaKit Erase Video Subtitle Pro** — higher-quality erasure with subtitle
+  or rendered-text modes, output encoding preference, and an optional region.
 
-Planned modules include subtitle removal, video editing, audio processing,
+Planned modules include additional video AI, video editing, audio processing,
 image tools, and shared MediaKit utilities.
 
 ## Requirements
@@ -31,10 +34,10 @@ image tools, and shared MediaKit utilities.
 
 ## Install the MediaKit CLI
 
-Install the official CLI:
+Install the official CLI using its current one-step installer:
 
 ```bash
-npm install -g @volcengine/mediakit-cli
+npx @volcengine/mediakit-cli install -y
 mediakit-cli version
 ```
 
@@ -94,14 +97,41 @@ MediaKit Video Enhance
 Save Video
 ```
 
+Subtitle erasure can be inserted before or after enhancement:
+
+```text
+Load Video
+    ↓ VIDEO
+MediaKit Erase Video Subtitle Pro
+    ↓ VIDEO
+MediaKit Video Enhance
+    ↓ VIDEO
+Save Video
+```
+
 Enhancement parameters:
 
 - `tool_version`: `standard` or `professional`.
 - `scene`: `common`, `ugc`, `short_series`, `aigc`, or `old_film`; only sent
   for the standard version.
-- `resolution`: keep the source resolution, or request 720p through 8K.
+- `resolution`: keep the source resolution, or request 240p through 4K.
+- `bitrate_level`: choose a low, medium, or high target bitrate.
+- `fps`: `0` keeps the source frame rate; positive values request a target up
+  to 120 fps.
 - polling controls are advanced options and should normally remain at their
   defaults.
+
+Professional subtitle-erasure parameters:
+
+- `erase_mode`: `Subtitle` removes detected subtitles; `Text` also removes
+  other rendered text while attempting to preserve text in the scene.
+- `output_encode_mode`: `Quality` prioritizes output quality; `Size` keeps the
+  output bitrate closer to the source.
+- `restrict_region`: when enabled, only text fully inside the normalized
+  rectangle is removed. Coordinates range from `0.0` to `1.0`; the default
+  rectangle covers the lower half of the frame.
+
+All video AI nodes submit paid cloud tasks to the user's own MediaKit account.
 
 ## Privacy and billing
 

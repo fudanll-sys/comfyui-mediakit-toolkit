@@ -2,7 +2,9 @@ import importlib
 import sys
 import types
 import unittest
-from unittest.mock import patch
+from contextlib import nullcontext
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 from mediakit_toolkit.errors import MediaKitDependencyError
 
@@ -43,7 +45,7 @@ def _fake_comfy_modules():
         Schema=_Schema,
         NodeOutput=_NodeOutput,
     )
-    for name in ("Video", "Boolean", "Combo", "Int", "String"):
+    for name in ("Video", "Boolean", "Combo", "Float", "Int", "String"):
         setattr(io, name, types.SimpleNamespace(Input=_Input, Output=_Output))
 
     comfy_api = types.ModuleType("comfy_api")
@@ -80,7 +82,12 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
         nodes = await extension.get_node_list()
         self.assertEqual(
             [node.define_schema().node_id for node in nodes],
-            ["MediaKitEnvironmentCheck", "MediaKitVideoEnhance"],
+            [
+                "MediaKitEnvironmentCheck",
+                "MediaKitVideoEnhance",
+                "MediaKitEraseVideoSubtitle",
+                "MediaKitEraseVideoSubtitlePro",
+            ],
         )
 
     def test_video_enhance_uses_native_video_input_and_output(self):
@@ -88,6 +95,58 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(schema.inputs[0], _Input)
         self.assertEqual(schema.inputs[0].id, "video")
         self.assertIsInstance(schema.outputs[0], _Output)
+        self.assertEqual(
+            [item.id for item in schema.inputs[-4:]],
+            [
+                "poll_interval_seconds",
+                "max_poll_attempts",
+                "bitrate_level",
+                "fps",
+            ],
+        )
+
+    def test_subtitle_nodes_use_native_video_input_and_output(self):
+        for node in (
+            self.extension.MediaKitEraseVideoSubtitle,
+            self.extension.MediaKitEraseVideoSubtitlePro,
+        ):
+            schema = node.define_schema()
+            self.assertIsInstance(schema.inputs[0], _Input)
+            self.assertEqual(schema.inputs[0].id, "video")
+            self.assertIsInstance(schema.outputs[0], _Output)
+
+    async def test_pro_subtitle_node_maps_optional_region(self):
+        video_ai = importlib.import_module("mediakit_toolkit.nodes.video_ai")
+        with (
+            patch.object(
+                video_ai,
+                "materialize_video",
+                return_value=nullcontext(Path("/tmp/input.mp4")),
+            ),
+            patch.object(
+                video_ai,
+                "erase_video_subtitle",
+                new_callable=AsyncMock,
+                return_value=("https://example.com/clean.mp4", "task-1"),
+            ) as erase,
+            patch.object(
+                video_ai,
+                "download_video_output",
+                new_callable=AsyncMock,
+                return_value=object(),
+            ),
+        ):
+            await video_ai.MediaKitEraseVideoSubtitlePro.execute(
+                object(),
+                erase_mode="Subtitle",
+                output_encode_mode="Quality",
+                restrict_region=True,
+                top_left_x=0.0,
+                top_left_y=0.5,
+                bottom_right_x=1.0,
+                bottom_right_y=1.0,
+            )
+        self.assertEqual(erase.await_args.kwargs["erase_region"]["top_left_y"], 0.5)
 
     def test_missing_cli_is_reported_without_breaking_node_loading(self):
         environment = importlib.import_module("mediakit_toolkit.nodes.environment")

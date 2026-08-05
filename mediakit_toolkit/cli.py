@@ -14,6 +14,7 @@ from .errors import (
     MediaKitCommandError,
     MediaKitConfigurationError,
     MediaKitDependencyError,
+    MediaKitInputError,
     MediaKitTaskError,
 )
 from .redaction import redact_text
@@ -34,7 +35,7 @@ def find_cli() -> str:
         return executable
     raise MediaKitDependencyError(
         "找不到 mediakit-cli。请先安装官方 CLI："
-        "npm install -g @volcengine/mediakit-cli，然后重启 ComfyUI。"
+        "npx @volcengine/mediakit-cli install -y，然后重启 ComfyUI。"
     )
 
 
@@ -86,7 +87,11 @@ def _classify_failure(payload: Mapping[str, Any], combined: str) -> None:
             "MediaKit 鉴权失败。请运行 mediakit-cli init --api-key <YOUR_API_KEY> --yes，"
             "或为 ComfyUI 进程设置 MEDIAKIT_API_KEY。"
         )
-    if error or status == "failed":
+    if (
+        error
+        or status in {"failed", "canceled", "cancelled"}
+        or payload.get("success") is False
+    ):
         detail = error if error else payload
         raise MediaKitTaskError(
             "MediaKit 任务失败：" + redact_text(json.dumps(detail, ensure_ascii=False))
@@ -106,6 +111,11 @@ def run_cli(
     process_env = os.environ.copy()
     if env:
         process_env.update(env)
+    # MediaKit requires integrations to identify their request surface. Do not
+    # inherit a stale `skill` value from the parent shell when running as a
+    # ComfyUI plugin.
+    process_env["MEDIAKIT_SURFACE"] = "plugin"
+    process_env["MEDIAKIT_RUNTIME"] = "comfyui"
 
     try:
         completed = subprocess.run(
@@ -177,11 +187,13 @@ def build_enhance_arguments(
     tool_version: str,
     scene: str,
     resolution: str,
+    bitrate_level: str = "medium",
+    fps: float = 0.0,
 ) -> list[str]:
     arguments = [
+        "--cloud",
         "video",
         "enhance-video",
-        "--cloud",
         "--video-url",
         video_path,
         "--tool-version",
@@ -191,6 +203,62 @@ def build_enhance_arguments(
         arguments.extend(["--scene", scene])
     if resolution != "keep":
         arguments.extend(["--resolution", resolution])
+    if bitrate_level not in {"low", "medium", "high"}:
+        raise MediaKitInputError(f"不支持的码率档位：{bitrate_level}")
+    arguments.extend(["--bitrate-level", bitrate_level])
+    if fps < 0 or fps > 120:
+        raise MediaKitInputError("目标帧率必须为 0（保持原值）或不超过 120。")
+    if fps > 0:
+        arguments.extend(["--fps", str(fps)])
+    return arguments
+
+
+def build_erase_subtitle_arguments(
+    video_path: str,
+    *,
+    professional: bool,
+    mode: str = "Subtitle",
+    output_encode_mode: str = "Quality",
+    erase_region: Mapping[str, float] | None = None,
+) -> list[str]:
+    """Build a cloud subtitle-erasure command from validated values."""
+    tool = "erase-video-subtitle-pro" if professional else "erase-video-subtitle"
+    arguments = ["--cloud", "video", tool, "--video-url", video_path]
+    if not professional:
+        return arguments
+
+    if mode not in {"Subtitle", "Text"}:
+        raise MediaKitInputError(f"不支持的字幕擦除模式：{mode}")
+    if output_encode_mode not in {"Quality", "Size"}:
+        raise MediaKitInputError(f"不支持的输出编码模式：{output_encode_mode}")
+    arguments.extend(
+        ["--mode", mode, "--output-encode-mode", output_encode_mode]
+    )
+
+    if erase_region is not None:
+        required = (
+            "top_left_x",
+            "top_left_y",
+            "bottom_right_x",
+            "bottom_right_y",
+        )
+        try:
+            region = {key: float(erase_region[key]) for key in required}
+        except (KeyError, TypeError, ValueError) as exc:
+            raise MediaKitInputError("字幕擦除框缺少有效的坐标值。") from exc
+        if any(value < 0 or value > 1 for value in region.values()):
+            raise MediaKitInputError("字幕擦除框坐标必须位于 0 到 1 之间。")
+        if not (
+            region["top_left_x"] < region["bottom_right_x"]
+            and region["top_left_y"] < region["bottom_right_y"]
+        ):
+            raise MediaKitInputError("字幕擦除框的右下角必须位于左上角右下方。")
+        arguments.extend(
+            [
+                "--erase-ratio-location",
+                json.dumps([region], ensure_ascii=False, separators=(",", ":")),
+            ]
+        )
     return arguments
 
 

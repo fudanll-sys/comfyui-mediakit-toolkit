@@ -3,7 +3,11 @@
 from comfy_api.latest import ComfyExtension, io
 
 from .nodes.environment import MediaKitEnvironmentCheck
-from .nodes.video_ai import MediaKitVideoEnhance
+from .nodes.video_ai import (
+    MediaKitEraseVideoSubtitle,
+    MediaKitEraseVideoSubtitlePro,
+    MediaKitVideoEnhance,
+)
 
 
 class MediaKitToolkitExtension(ComfyExtension):
@@ -11,9 +15,10 @@ class MediaKitToolkitExtension(ComfyExtension):
         return [
             MediaKitEnvironmentCheck,
             MediaKitVideoEnhance,
+            MediaKitEraseVideoSubtitle,
+            MediaKitEraseVideoSubtitlePro,
         ]
 
 
 async def comfy_entrypoint() -> MediaKitToolkitExtension:
     return MediaKitToolkitExtension()
-

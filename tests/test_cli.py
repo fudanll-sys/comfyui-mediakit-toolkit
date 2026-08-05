@@ -5,12 +5,14 @@ from unittest.mock import patch
 
 from mediakit_toolkit.cli import (
     build_enhance_arguments,
+    build_erase_subtitle_arguments,
     build_query_arguments,
     parse_final_json,
     run_cli,
 )
 from mediakit_toolkit.errors import (
     MediaKitConfigurationError,
+    MediaKitInputError,
     MediaKitTaskError,
 )
 
@@ -40,6 +42,8 @@ class CommandBuilderTests(unittest.TestCase):
         )
         self.assertIn("--scene", args)
         self.assertIn("--resolution", args)
+        self.assertIn("--bitrate-level", args)
+        self.assertEqual(args[:3], ["--cloud", "video", "enhance-video"])
 
     def test_professional_ignores_scene_and_keep_resolution(self):
         args = build_enhance_arguments(
@@ -51,12 +55,69 @@ class CommandBuilderTests(unittest.TestCase):
         self.assertNotIn("--scene", args)
         self.assertNotIn("--resolution", args)
 
+    def test_enhance_includes_optional_fps(self):
+        args = build_enhance_arguments(
+            "/tmp/input.mp4",
+            tool_version="standard",
+            scene="common",
+            resolution="720p",
+            bitrate_level="high",
+            fps=60,
+        )
+        self.assertEqual(args[args.index("--fps") + 1], "60")
+        self.assertEqual(args[args.index("--bitrate-level") + 1], "high")
+
     def test_query_is_blocking_and_bounded(self):
         args = build_query_arguments(
             "task-1", poll_interval_seconds=5, max_poll_attempts=12
         )
         self.assertIn("--poll-complete", args)
         self.assertEqual(args[-1], "12")
+
+    def test_standard_subtitle_erase_has_no_pro_parameters(self):
+        args = build_erase_subtitle_arguments(
+            "/tmp/input.mp4", professional=False
+        )
+        self.assertEqual(
+            args,
+            [
+                "--cloud",
+                "video",
+                "erase-video-subtitle",
+                "--video-url",
+                "/tmp/input.mp4",
+            ],
+        )
+
+    def test_pro_subtitle_erase_encodes_valid_region_as_json(self):
+        args = build_erase_subtitle_arguments(
+            "/tmp/input.mp4",
+            professional=True,
+            mode="Text",
+            output_encode_mode="Size",
+            erase_region={
+                "top_left_x": 0,
+                "top_left_y": 0.5,
+                "bottom_right_x": 1,
+                "bottom_right_y": 1,
+            },
+        )
+        self.assertEqual(args[:3], ["--cloud", "video", "erase-video-subtitle-pro"])
+        region_json = args[args.index("--erase-ratio-location") + 1]
+        self.assertEqual(json.loads(region_json)[0]["top_left_y"], 0.5)
+
+    def test_pro_subtitle_erase_rejects_inverted_region(self):
+        with self.assertRaises(MediaKitInputError):
+            build_erase_subtitle_arguments(
+                "/tmp/input.mp4",
+                professional=True,
+                erase_region={
+                    "top_left_x": 0.8,
+                    "top_left_y": 0.5,
+                    "bottom_right_x": 0.2,
+                    "bottom_right_y": 1,
+                },
+            )
 
 
 class CliExecutionTests(unittest.TestCase):
@@ -69,6 +130,12 @@ class CliExecutionTests(unittest.TestCase):
         result = run_cli(["video", "enhance-video"])
         self.assertEqual(result.payload["task_id"], "task-1")
         self.assertFalse(run.call_args.kwargs["shell"])
+        self.assertEqual(
+            run.call_args.kwargs["env"]["MEDIAKIT_SURFACE"], "plugin"
+        )
+        self.assertEqual(
+            run.call_args.kwargs["env"]["MEDIAKIT_RUNTIME"], "comfyui"
+        )
 
     @patch("mediakit_toolkit.cli.shutil.which", return_value="/usr/bin/mediakit-cli")
     @patch("mediakit_toolkit.cli.subprocess.run")
@@ -88,7 +155,15 @@ class CliExecutionTests(unittest.TestCase):
         with self.assertRaises(MediaKitTaskError):
             run_cli(["shared", "query-task"])
 
+    @patch("mediakit_toolkit.cli.shutil.which", return_value="/usr/bin/mediakit-cli")
+    @patch("mediakit_toolkit.cli.subprocess.run")
+    def test_canceled_status_raises(self, run, _which):
+        run.return_value = subprocess.CompletedProcess(
+            ["mediakit-cli"], 0, '{"status":"canceled"}', ""
+        )
+        with self.assertRaises(MediaKitTaskError):
+            run_cli(["shared", "query-task"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

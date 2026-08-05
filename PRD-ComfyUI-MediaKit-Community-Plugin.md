@@ -177,6 +177,14 @@ MediaKitEnvironmentCheck
 - 云端异步任务；
 - 节点内部自动上传、轮询和下载。
 
+### MediaKit Erase Video Subtitle
+
+- 能力：标准版视频硬字幕智能擦除；
+- 输入：原生 `VIDEO`；
+- 输出：原生 `VIDEO`；
+- 云端异步任务；
+- 节点内部自动上传、轮询和下载。
+
 ## 5.3 首版剪辑节点
 
 以下节点应按当前 `mediakit-cli editing` Schema 实现：
@@ -564,6 +572,7 @@ comfyui-mediakit-toolkit/
 
 ### v0.2.0 视频 AI
 
+- Erase Video Subtitle（标准版）；
 - Erase Video Subtitle Pro；
 - 错误体系；
 - 统一日志；
@@ -657,4 +666,3 @@ comfyui-mediakit-toolkit/
 - Comfy Registry 发布：https://docs.comfy.org/registry/publishing
 - Comfy Registry 规范：https://docs.comfy.org/registry/specifications
 - Comfy Registry 安全标准：https://docs.comfy.org/registry/standards
-

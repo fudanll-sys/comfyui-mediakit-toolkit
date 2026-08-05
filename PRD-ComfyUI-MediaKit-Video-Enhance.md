@@ -147,7 +147,7 @@ IO.Video.Output("video")
 ### scene
 
 - 类型：下拉选择
-- 默认值：`aigc`
+- 默认值：`common`
 - 可选值：
   - `common`；
   - `ugc`；
@@ -163,12 +163,27 @@ IO.Video.Output("video")
 - 默认值：`1080p`
 - 可选值：
   - `保持原分辨率`；
+  - `240p`；
+  - `360p`；
+  - `480p`；
+  - `540p`；
   - `720p`；
   - `1080p`；
   - `2k`；
-  - `4k`；
-  - `8k`。
+  - `4k`。
 - 规则：选择“保持原分辨率”时，不向 CLI 传递 `--resolution`。
+
+### bitrate_level
+
+- 类型：下拉选择
+- 默认值：`medium`
+- 可选值：`low`、`medium`、`high`。
+
+### fps
+
+- 类型：浮点数
+- 默认值：`0`，表示保持源视频帧率；
+- 有效目标值范围：大于 `0` 且不超过 `120`。
 
 ### poll_interval_seconds
 
@@ -509,7 +524,7 @@ Python 侧尽量只依赖 ComfyUI 自带模块和标准库。
 CLI 安装：
 
 ```bash
-npm install -g @volcengine/mediakit-cli
+npx @volcengine/mediakit-cli install -y
 ```
 
 初始化：
