@@ -168,6 +168,16 @@ MediaKitEnvironmentCheck
 - 输出：原生 `VIDEO`；
 - 详细参数和验收：参考画质增强子 PRD。
 
+### MediaKit Video Enhance Generative
+
+- 能力：基于扩散大模型的生成式视频增强修复；
+- 输入：原生 `VIDEO`；
+- 输出：原生 `VIDEO`；
+- 分辨率：`720p`、`1080p`；
+- 码率档位：`low`、`medium`、`high`；
+- 可选目标帧率：保持源值或 `15–120` fps；
+- 云端异步任务，节点内部自动上传、轮询和下载。
+
 ### MediaKit Erase Video Subtitle Pro
 
 - 能力：视频字幕/文字智能擦除；
@@ -265,7 +275,6 @@ MediaKitEnvironmentCheck
 以下能力不作为首个公开版阻塞项，但架构必须允许增加：
 
 - 画质增强极速版；
-- 画质增强大模型版；
 - 视频转码；
 - 视频转封装；
 - 极智超清；
@@ -577,6 +586,12 @@ comfyui-mediakit-toolkit/
 - 错误体系；
 - 统一日志；
 - 示例工作流。
+
+### v0.2.1 生成式画质增强
+
+- Video Enhance Generative；
+- 大模型版参数校验；
+- 原生 `VIDEO → VIDEO` 示例工作流。
 
 ### v0.3.0 视频剪辑
 

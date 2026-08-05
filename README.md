@@ -12,11 +12,13 @@ node implementation.
 
 ## Status
 
-Version `0.2.0` is an early development release. It currently includes:
+Version `0.2.1` is an early development release. It currently includes:
 
 - **MediaKit Environment Check** — checks the local CLI and configuration.
 - **MediaKit Video Enhance** — native ComfyUI `VIDEO` input and `VIDEO`
   output using MediaKit standard or professional enhancement.
+- **MediaKit Video Enhance Generative** — diffusion-based large-model video
+  restoration with 720p/1080p output, bitrate control, and optional target fps.
 - **MediaKit Erase Video Subtitle** — standard hard-subtitle erasure.
 - **MediaKit Erase Video Subtitle Pro** — higher-quality erasure with subtitle
   or rendered-text modes, output encoding preference, and an optional region.
@@ -132,6 +134,13 @@ Professional subtitle-erasure parameters:
   rectangle covers the lower half of the frame.
 
 All video AI nodes submit paid cloud tasks to the user's own MediaKit account.
+
+Generative enhancement parameters:
+
+- `resolution`: `720p` or `1080p`.
+- `bitrate_level`: `low`, `medium`, or `high`.
+- `fps`: `0` keeps the source frame rate; otherwise use 15–120 fps. MediaKit
+  recommends staying within four times the source frame rate.
 
 ## Privacy and billing
 

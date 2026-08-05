@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.2.0 - Unreleased
+## 0.2.1 - Unreleased
+
+- Add native `VIDEO` to `VIDEO` generative large-model enhancement.
+- Validate the official 720p/1080p, bitrate, and optional 15–120 fps inputs
+  before submitting a paid cloud task.
+- Add a generative enhancement example workflow and tests.
+
+## 0.2.0 - 2026-08-05
 
 - Add native `VIDEO` to `VIDEO` standard subtitle erasure.
 - Add native `VIDEO` to `VIDEO` professional subtitle erasure with text mode,

@@ -7,6 +7,7 @@ from .nodes.video_ai import (
     MediaKitEraseVideoSubtitle,
     MediaKitEraseVideoSubtitlePro,
     MediaKitVideoEnhance,
+    MediaKitVideoEnhanceGenerative,
 )
 
 
@@ -15,6 +16,7 @@ class MediaKitToolkitExtension(ComfyExtension):
         return [
             MediaKitEnvironmentCheck,
             MediaKitVideoEnhance,
+            MediaKitVideoEnhanceGenerative,
             MediaKitEraseVideoSubtitle,
             MediaKitEraseVideoSubtitlePro,
         ]
