@@ -161,14 +161,14 @@ MediaKitEnvironmentCheck
 
 ## 5.2 首版视频 AI 节点
 
-### MediaKit Video Enhance
+### Enhance · 视频增强（极速版）
 
 - 能力：标准版/专业版视频画质增强；
 - 输入：原生 `VIDEO`；
 - 输出：原生 `VIDEO`；
 - 详细参数和验收：参考画质增强子 PRD。
 
-### MediaKit Video Enhance Generative
+### Enhance Ultra · 视频增强（大模型版）
 
 - 能力：基于扩散大模型的生成式视频增强修复；
 - 输入：原生 `VIDEO`；
@@ -178,7 +178,7 @@ MediaKitEnvironmentCheck
 - 可选目标帧率：保持源值或 `15–120` fps；
 - 云端异步任务，节点内部自动上传、轮询和下载。
 
-### MediaKit Erase Video Subtitle Pro
+### Erase Subtitle Pro · 字幕擦除（增强版）
 
 - 能力：视频字幕/文字智能擦除；
 - 输入：原生 `VIDEO`；
@@ -187,7 +187,7 @@ MediaKitEnvironmentCheck
 - 云端异步任务；
 - 节点内部自动上传、轮询和下载。
 
-### MediaKit Erase Video Subtitle
+### Erase Subtitle · 字幕擦除
 
 - 能力：标准版视频硬字幕智能擦除；
 - 输入：原生 `VIDEO`；

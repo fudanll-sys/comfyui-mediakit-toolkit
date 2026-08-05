@@ -17,7 +17,7 @@ class MediaKitVideoEnhance(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="MediaKitVideoEnhance",
-            display_name="MediaKit Video Enhance",
+            display_name="Enhance · 视频增强（极速版）",
             category="MediaKit/Video AI",
             description="使用火山引擎 AI MediaKit 标准版或专业版增强视频画质。",
             inputs=[
@@ -111,7 +111,7 @@ class MediaKitEraseVideoSubtitle(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="MediaKitEraseVideoSubtitle",
-            display_name="MediaKit Erase Video Subtitle",
+            display_name="Erase Subtitle · 字幕擦除",
             category="MediaKit/Video AI",
             description="使用 MediaKit 标准版智能检测并擦除视频硬字幕。",
             inputs=[
@@ -156,7 +156,7 @@ class MediaKitVideoEnhanceGenerative(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="MediaKitVideoEnhanceGenerative",
-            display_name="MediaKit Video Enhance Generative",
+            display_name="Enhance Ultra · 视频增强（大模型版）",
             category="MediaKit/Video AI",
             description=(
                 "使用 MediaKit 扩散大模型主动补全视频细节并进行生成式增强修复。"
@@ -226,7 +226,7 @@ class MediaKitEraseVideoSubtitlePro(io.ComfyNode):
     def define_schema(cls) -> io.Schema:
         return io.Schema(
             node_id="MediaKitEraseVideoSubtitlePro",
-            display_name="MediaKit Erase Video Subtitle Pro",
+            display_name="Erase Subtitle Pro · 字幕擦除（增强版）",
             category="MediaKit/Video AI",
             description="使用 MediaKit 精细化字幕擦除，可限定擦除类型与画面区域。",
             inputs=[
