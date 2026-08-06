@@ -94,16 +94,6 @@ git clone https://github.com/fudanll-sys/comfyui-mediakit-toolkit.git
 
 当前尚未发布到 ComfyUI Registry，因此暂时请使用 GitHub 安装。
 
-### 更新插件
-
-在 ComfyUI 根目录运行：
-
-```bash
-git -C custom_nodes/comfyui-mediakit-toolkit pull --ff-only origin main
-```
-
-更新后完全重启 ComfyUI。
-
 ## 快速使用
 
 首次使用建议先运行：
