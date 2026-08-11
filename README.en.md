@@ -91,7 +91,27 @@ the official installation and authentication guidance.
 
 ## Install the plugin
 
-Open the ComfyUI `custom_nodes` directory:
+> ComfyUI Manager installs only this plugin. Every user must still install and
+> initialize `mediakit-cli` locally as described above and authenticate with
+> their own AI MediaKit API key.
+
+### Option 1: ComfyUI Manager (recommended)
+
+1. Open `Manager` → `Custom Nodes` in ComfyUI.
+2. Search for `MediaKit Toolkit` or `mediakit-toolkit`.
+3. Select the latest version and click `Install`.
+4. Fully restart ComfyUI after installation.
+
+The Registry version can also be installed with Comfy CLI:
+
+```bash
+comfy node install mediakit-toolkit
+```
+
+### Option 2: Git
+
+If the package is not yet visible in Manager, or if you want to track the
+GitHub version directly, open the ComfyUI `custom_nodes` directory:
 
 ```bash
 cd /path/to/ComfyUI/custom_nodes
@@ -102,12 +122,10 @@ Fully restart ComfyUI after installation. The nodes appear under
 `MediaKit/Video AI` and can be found by searching for `MediaKit`, `Enhance`, or
 `Erase Subtitle`.
 
-The plugin has not been published to the ComfyUI Registry yet, so use GitHub
-installation for now.
-
 ### Update
 
-Run this command from the ComfyUI root directory:
+Manager users can select a new release under `Update available`. Git users can
+run this command from the ComfyUI root directory:
 
 ```bash
 git -C custom_nodes/comfyui-mediakit-toolkit pull --ff-only origin main
