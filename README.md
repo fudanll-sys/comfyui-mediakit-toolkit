@@ -82,7 +82,26 @@ export MEDIAKIT_API_KEY="YOUR_MEDIAKIT_API_KEY"
 
 ## 安装插件
 
-进入 ComfyUI 的 `custom_nodes` 目录：
+> ComfyUI Manager 只会安装本插件。每位用户仍需按照上文在本机安装并初始化
+> `mediakit-cli`，使用自己的 AI MediaKit API Key 完成鉴权。
+
+### 方法一：ComfyUI Manager（推荐）
+
+1. 在 ComfyUI 中打开 `Manager` → `Custom Nodes`。
+2. 搜索 `MediaKit Toolkit` 或 `mediakit-toolkit`。
+3. 选择最新版本并点击 `Install`。
+4. 安装完成后完全重启 ComfyUI。
+
+也可以使用 Comfy CLI 安装 Registry 版本：
+
+```bash
+comfy node install mediakit-toolkit
+```
+
+### 方法二：Git 安装
+
+如果 Manager 中暂时搜索不到，或者需要直接跟踪 GitHub 版本，可以进入 ComfyUI
+的 `custom_nodes` 目录安装：
 
 ```bash
 cd /path/to/ComfyUI/custom_nodes
@@ -92,7 +111,16 @@ git clone https://github.com/fudanll-sys/comfyui-mediakit-toolkit.git
 安装后完全重启 ComfyUI。节点位于 `MediaKit/Video AI` 分类，也可以搜索
 `MediaKit`、`Enhance` 或 `Erase Subtitle`。
 
-当前尚未发布到 ComfyUI Registry，因此暂时请使用 GitHub 安装。
+### 更新插件
+
+通过 Manager 安装的用户可在 `Update available` 中选择新版本并更新。通过 Git
+安装的用户可在 ComfyUI 根目录运行：
+
+```bash
+git -C custom_nodes/comfyui-mediakit-toolkit pull --ff-only origin main
+```
+
+更新后完全重启 ComfyUI。
 
 ## 快速使用
 
