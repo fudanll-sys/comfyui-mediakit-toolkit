@@ -1,0 +1,48 @@
+{
+  "id": "8f0a6a4b-3f2d-4c6e-9d8b-5b1f4e6c7a2d",
+  "revision": 0,
+  "last_node_id": 2,
+  "last_link_id": 1,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadVideo",
+      "pos": [40, 120],
+      "size": [300, 120],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {"name": "video", "type": "VIDEO", "links": [1]}
+      ],
+      "properties": {"Node name for S&R": "LoadVideo"},
+      "widgets_values": []
+    },
+    {
+      "id": 2,
+      "type": "MediaKitVideoASR",
+      "pos": [400, 120],
+      "size": [380, 320],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"name": "video", "type": "VIDEO", "link": 1}
+      ],
+      "outputs": [
+        {"name": "subtitle", "type": "STRING", "links": []},
+        {"name": "raw_json", "type": "STRING", "links": []}
+      ],
+      "properties": {"Node name for S&R": "MediaKitVideoASR"},
+      "widgets_values": ["auto", "auto", false, false, 10, 720]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "VIDEO"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

@@ -1,0 +1,48 @@
+{
+  "id": "2a4f8c3d-7e5b-4a9f-8c2e-9d1b6f4a7c3e",
+  "revision": 0,
+  "last_node_id": 2,
+  "last_link_id": 1,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "LoadVideo",
+      "pos": [40, 120],
+      "size": [300, 120],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {"name": "video", "type": "VIDEO", "links": [1]}
+      ],
+      "properties": {"Node name for S&R": "LoadVideo"},
+      "widgets_values": []
+    },
+    {
+      "id": 2,
+      "type": "MediaKitVideoProbeMetadata",
+      "pos": [400, 120],
+      "size": [380, 280],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {"name": "video", "type": "VIDEO", "link": 1}
+      ],
+      "outputs": [
+        {"name": "metadata_json", "type": "STRING", "links": []},
+        {"name": "raw_json", "type": "STRING", "links": []}
+      ],
+      "properties": {"Node name for S&R": "MediaKitVideoProbeMetadata"},
+      "widgets_values": [10, 720]
+    }
+  ],
+  "links": [
+    [1, 1, 0, 2, 0, "VIDEO"]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

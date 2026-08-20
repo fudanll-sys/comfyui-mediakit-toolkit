@@ -15,7 +15,7 @@ inside each node.
 
 ## Status
 
-Version `0.2.1` currently provides:
+Version `0.3.0` currently provides:
 
 | Node | Description |
 | --- | --- |
@@ -24,6 +24,13 @@ Version `0.2.1` currently provides:
 | `Enhance Ultra · 视频增强（大模型版）` | Diffusion-based generative video restoration. |
 | `Erase Subtitle · 字幕擦除` | Automatic hard-subtitle detection and removal. |
 | `Erase Subtitle Pro · 字幕擦除（增强版）` | Advanced subtitle/text removal with optional region control. |
+| `ASR · 语音转字幕` | Speech recognition that outputs timestamped subtitle text. |
+| `OCR · 视频识别字幕` | Recognizes subtitles and text in video frames. |
+| `Matte · 人像抠图` | Portrait matting that removes the background and outputs transparent video. |
+| `Matte · 绿幕抠图` | Greenscreen/color-key matting with transparent output. |
+| `Scene · 场景切分` | Automatic scene segmentation that outputs a clip timeline. |
+| `Highlight · 高光片段提取` | Extracts highlight timestamps, scores, and metadata. |
+| `Metadata · 视频元信息` | Probes container, video-stream, and audio-stream metadata. |
 
 `Enhance · 视频增强` is not the fast edition. A dedicated fast-enhancement
 capability has not been integrated yet and will use a separate node name when
@@ -171,10 +178,76 @@ Erase Subtitle Pro · 字幕擦除（增强版）
 Save Video
 ```
 
+Speech-to-subtitle:
+
+```text
+Load Video
+    ↓ VIDEO
+ASR · 语音转字幕
+    ↓ STRING
+(subtitle text is ready for downstream captioning nodes)
+```
+
+Portrait/greenscreen matting:
+
+```text
+Load Video
+    ↓ VIDEO
+Matte · 人像抠图
+    ↓ VIDEO
+Save Video
+```
+
+Scene segmentation, highlight analysis, or metadata:
+
+```text
+Load Video
+    ↓ VIDEO
+Scene · 场景切分   (or Highlight · 高光片段提取 / Metadata · 视频元信息)
+    ↓ STRING
+(JSON timeline or metadata for downstream analysis nodes)
+```
+
 Importable workflows are available in [`example_workflows`](./example_workflows).
 Select your own authorized local video after importing one.
 
 ## Node parameters
+
+### ASR · 语音转字幕
+
+- `content_type`: `auto`, `speech`, or `singing`.
+- `language`: `auto` detection, or `cmn-Hans-CN` / `eng-US`.
+- `enable_speaker_info`: enable speaker diarization.
+- `enable_confidence`: return confidence scores.
+- Outputs: `subtitle` text and a redacted `raw_json` payload.
+
+### OCR · 视频识别字幕
+
+- `mode`: `Subtitle` for subtitle text or `Detailed` for richer detail.
+- Outputs: `subtitle` text and a redacted `raw_json` payload.
+
+### Matte · 人像抠图 / Matte · 绿幕抠图
+
+- `output_format`: `WEBM` (default) or `MOV` transparent output.
+- Output: native `VIDEO`.
+
+### Scene · 场景切分
+
+- `enable_clip_fade`: emit detected fades as separate clips.
+- `segment_threshold`: sensitivity in `[0, 100)`; `0` uses the default.
+- `min_duration` / `max_duration`: per-clip duration limits in seconds; `0`
+  uses the default.
+- Outputs: `scenes_json` timeline and a redacted `raw_json` payload.
+
+### Highlight · 高光片段提取
+
+- `model`: `Miniseries` or `Game`.
+- Outputs: `highlights_json` metadata and a redacted `raw_json` payload.
+
+### Metadata · 视频元信息
+
+- No business parameters.
+- Outputs: `metadata_json` and a redacted `raw_json` payload.
 
 ### Enhance · 视频增强
 

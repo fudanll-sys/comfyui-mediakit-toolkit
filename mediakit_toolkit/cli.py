@@ -314,3 +314,127 @@ def build_query_arguments(
         "--max-poll-attempts",
         str(max_poll_attempts),
     ]
+
+
+def build_asr_subtitles_arguments(
+    video_path: str,
+    *,
+    content_type: str = "auto",
+    language: str = "auto",
+    enable_speaker_info: bool = False,
+    enable_confidence: bool = False,
+) -> list[str]:
+    """Build the official cloud ASR (speech-to-subtitle) command."""
+    if content_type not in {"auto", "speech", "singing"}:
+        raise MediaKitInputError(f"不支持的识别类型：{content_type}")
+    if language not in {"auto", "cmn-Hans-CN", "eng-US"}:
+        raise MediaKitInputError(f"不支持的识别语言：{language}")
+    arguments = [
+        "--cloud",
+        "video",
+        "asr-subtitles",
+        "--video-url",
+        video_path,
+    ]
+    if content_type != "auto":
+        arguments.extend(["--content-type", content_type])
+    if language != "auto":
+        arguments.extend(["--language", language])
+    if enable_speaker_info:
+        arguments.append("--enable-speaker-info")
+    if enable_confidence:
+        arguments.append("--enable-confidence")
+    return arguments
+
+
+def build_video_ocr_arguments(
+    video_path: str,
+    *,
+    mode: str = "Subtitle",
+) -> list[str]:
+    """Build the official cloud video OCR command."""
+    if mode not in {"Subtitle", "Detailed"}:
+        raise MediaKitInputError(f"不支持的 OCR 模式：{mode}")
+    arguments = ["--cloud", "video", "video-ocr", "--video-url", video_path]
+    if mode != "Subtitle":
+        arguments.extend(["--mode", mode])
+    return arguments
+
+
+def build_matte_video_arguments(
+    video_path: str,
+    *,
+    tool: str,
+    output_format: str = "WEBM",
+) -> list[str]:
+    """Build a cloud matting command (portrait or greenscreen)."""
+    if tool not in {"matte-portrait-video", "matte-greenscreen-video"}:
+        raise MediaKitInputError(f"不支持的抠图工具：{tool}")
+    if output_format not in {"MOV", "WEBM"}:
+        raise MediaKitInputError(f"不支持的输出格式：{output_format}")
+    arguments = ["--cloud", "video", tool, "--video-url", video_path]
+    if output_format != "WEBM":
+        arguments.extend(["--format", output_format])
+    return arguments
+
+
+def build_segment_scenes_arguments(
+    video_path: str,
+    *,
+    enable_clip_fade: bool = False,
+    segment_threshold: float | None = None,
+    min_duration: float | None = None,
+    max_duration: float | None = None,
+) -> list[str]:
+    """Build the official cloud scene-segmentation command."""
+    if segment_threshold is not None and not 0 <= segment_threshold < 100:
+        raise MediaKitInputError("场景切分阈值必须在 [0, 100) 范围内。")
+    if min_duration is not None and min_duration < 0:
+        raise MediaKitInputError("切片最小时长不能为负数。")
+    if max_duration is not None and max_duration < 0:
+        raise MediaKitInputError("切片最大时长不能为负数。")
+    if (
+        min_duration is not None
+        and max_duration is not None
+        and min_duration > max_duration
+    ):
+        raise MediaKitInputError("切片最小时长不能大于最大时长。")
+    arguments = ["--cloud", "video", "segment-scenes", "--video-url", video_path]
+    if enable_clip_fade:
+        arguments.append("--enable-clip-fade")
+    if segment_threshold is not None:
+        arguments.extend(["--segment-threshold", str(segment_threshold)])
+    if min_duration is not None:
+        arguments.extend(["--min-duration", str(min_duration)])
+    if max_duration is not None:
+        arguments.extend(["--max-duration", str(max_duration)])
+    return arguments
+
+
+def build_analyze_highlights_arguments(
+    video_paths: Sequence[str],
+    *,
+    model: str,
+) -> list[str]:
+    """Build the official cloud highlight-analysis command."""
+    if model not in {"Miniseries", "Game"}:
+        raise MediaKitInputError(f"不支持的高光分析模型：{model}")
+    if not video_paths:
+        raise MediaKitInputError("高光片段提取至少需要一个视频。")
+    mode = "StorylineCuts" if model == "Miniseries" else "HighlightExtract"
+    return [
+        "--cloud",
+        "video",
+        "analyze-video-highlights",
+        "--video-urls",
+        json.dumps(list(video_paths), ensure_ascii=False, separators=(",", ":")),
+        "--model",
+        model,
+        "--mode",
+        mode,
+    ]
+
+
+def build_probe_metadata_arguments(video_path: str) -> list[str]:
+    """Build the official cloud video-metadata probe command."""
+    return ["--cloud", "video", "probe-video-metadata", "--video-url", video_path]
