@@ -1,6 +1,6 @@
 [project]
 name = "mediakit-toolkit"
-version = "0.2.1"
+version = "0.3.0"
 description = "Community ComfyUI nodes for Volcengine AI MediaKit"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
@@ -21,7 +21,7 @@ Documentation = "https://github.com/fudanll-sys/comfyui-mediakit-toolkit#readme"
 Issues = "https://github.com/fudanll-sys/comfyui-mediakit-toolkit/issues"
 
 [tool.comfy]
-PublisherId = "replace-before-publish"
+PublisherId = "fudanll"
 DisplayName = "MediaKit Toolkit"
 requires-comfyui = ">=0.3.0"
 

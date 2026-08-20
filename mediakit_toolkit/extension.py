@@ -9,6 +9,15 @@ from .nodes.video_ai import (
     MediaKitVideoEnhance,
     MediaKitVideoEnhanceGenerative,
 )
+from .nodes.video_understanding import (
+    MediaKitVideoAnalyzeHighlights,
+    MediaKitVideoASR,
+    MediaKitVideoMatteGreenscreen,
+    MediaKitVideoMattePortrait,
+    MediaKitVideoOCR,
+    MediaKitVideoProbeMetadata,
+    MediaKitVideoSegmentScenes,
+)
 
 
 class MediaKitToolkitExtension(ComfyExtension):
@@ -19,6 +28,13 @@ class MediaKitToolkitExtension(ComfyExtension):
             MediaKitVideoEnhanceGenerative,
             MediaKitEraseVideoSubtitle,
             MediaKitEraseVideoSubtitlePro,
+            MediaKitVideoASR,
+            MediaKitVideoOCR,
+            MediaKitVideoMattePortrait,
+            MediaKitVideoMatteGreenscreen,
+            MediaKitVideoSegmentScenes,
+            MediaKitVideoAnalyzeHighlights,
+            MediaKitVideoProbeMetadata,
         ]
 
 

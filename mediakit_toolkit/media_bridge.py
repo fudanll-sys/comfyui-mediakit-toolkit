@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
 import tempfile
@@ -64,3 +65,24 @@ async def download_video_output(url: str) -> object:
             "当前 ComfyUI 缺少原生视频下载接口。请升级到支持 V3 VIDEO API 的版本。"
         ) from exc
     return await download_url_to_video_output(url)
+
+
+async def download_text_output(url: str) -> str:
+    """Download a MediaKit result file and return its decoded text."""
+    try:
+        return await asyncio.to_thread(_download_text_sync, url)
+    except OSError as exc:
+        raise MediaKitInputError(f"无法下载结果文件：{exc}") from exc
+
+
+def _download_text_sync(url: str) -> str:
+    import urllib.request
+
+    with urllib.request.urlopen(url, timeout=120) as response:  # noqa: S310
+        data = response.read()
+    for encoding in ("utf-8-sig", "utf-8", "gb18030"):
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", errors="replace")

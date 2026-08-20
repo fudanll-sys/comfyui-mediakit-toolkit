@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add cloud video understanding and analysis nodes: ASR speech-to-subtitle,
+  video OCR, portrait and greenscreen matting, scene segmentation, highlight
+  analysis, and video metadata probing.
+- Add native `VIDEO` to `STRING` output paths for subtitle, scene, highlight,
+  and metadata results, and `VIDEO` to `VIDEO` paths for matting.
+- Extract subtitle files from task results and expose redacted raw JSON for
+  downstream processing.
+- Keep the fast-edition label reserved for a future dedicated capability.
 - Shorten the four video AI node titles with consistent bilingual labels while
   preserving their internal node IDs and existing workflow compatibility.
 - Rename the current enhancement node to `Enhance · 视频增强`, reserving the

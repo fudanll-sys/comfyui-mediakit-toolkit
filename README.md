@@ -12,7 +12,7 @@ MediaKit 云端视频 AI 能力封装为原生 ComfyUI 节点，并在节点内�
 
 ## 当前状态
 
-当前版本为 `0.2.1`，已提供以下节点：
+当前版本为 `0.3.0`，已提供以下节点：
 
 | 节点 | 说明 |
 | --- | --- |
@@ -21,6 +21,13 @@ MediaKit 云端视频 AI 能力封装为原生 ComfyUI 节点，并在节点内�
 | `Enhance Ultra · 视频增强（大模型版）` | 基于扩散大模型的生成式视频增强修复。 |
 | `Erase Subtitle · 字幕擦除` | 智能检测并擦除视频硬字幕。 |
 | `Erase Subtitle Pro · 字幕擦除（增强版）` | 精细化字幕/文字擦除，支持限定擦除区域。 |
+| `ASR · 语音转字幕` | 识别视频语音，输出带时间戳的字幕文本。 |
+| `OCR · 视频识别字幕` | 识别视频画面中的字幕和文字。 |
+| `Matte · 人像抠图` | 识别人物主体并移除背景，输出透明背景视频。 |
+| `Matte · 绿幕抠图` | 对绿幕或纯色背景视频抠图，输出透明背景视频。 |
+| `Scene · 场景切分` | 依据转场自动切分场景，输出切片时间轴。 |
+| `Highlight · 高光片段提取` | 捕捉情绪波峰与关键动作，输出高光元数据。 |
+| `Metadata · 视频元信息` | 探测视频容器、视频流与音频流元信息。 |
 
 `Enhance · 视频增强` 不是极速版。独立的极速增强能力尚未接入，未来上线后将使用
 单独的节点名称，避免与当前标准版/专业版混淆。
@@ -82,7 +89,26 @@ export MEDIAKIT_API_KEY="YOUR_MEDIAKIT_API_KEY"
 
 ## 安装插件
 
-进入 ComfyUI 的 `custom_nodes` 目录：
+> ComfyUI Manager 只会安装本插件。每位用户仍需按照上文在本机安装并初始化
+> `mediakit-cli`，使用自己的 AI MediaKit API Key 完成鉴权。
+
+### 方法一：ComfyUI Manager（推荐）
+
+1. 在 ComfyUI 中打开 `Manager` → `Custom Nodes`。
+2. 搜索 `MediaKit Toolkit` 或 `mediakit-toolkit`。
+3. 选择最新版本并点击 `Install`。
+4. 安装完成后完全重启 ComfyUI。
+
+也可以使用 Comfy CLI 安装 Registry 版本：
+
+```bash
+comfy node install mediakit-toolkit
+```
+
+### 方法二：Git 安装
+
+如果 Manager 中暂时搜索不到，或者需要直接跟踪 GitHub 版本，可以进入 ComfyUI
+的 `custom_nodes` 目录安装：
 
 ```bash
 cd /path/to/ComfyUI/custom_nodes
@@ -92,11 +118,10 @@ git clone https://github.com/fudanll-sys/comfyui-mediakit-toolkit.git
 安装后完全重启 ComfyUI。节点位于 `MediaKit/Video AI` 分类，也可以搜索
 `MediaKit`、`Enhance` 或 `Erase Subtitle`。
 
-当前尚未发布到 ComfyUI Registry，因此暂时请使用 GitHub 安装。
-
 ### 更新插件
 
-在 ComfyUI 根目录运行：
+通过 Manager 安装的用户可在 `Update available` 中选择新版本并更新。通过 Git
+安装的用户可在 ComfyUI 根目录运行：
 
 ```bash
 git -C custom_nodes/comfyui-mediakit-toolkit pull --ff-only origin main
@@ -142,10 +167,75 @@ Erase Subtitle Pro · 字幕擦除（增强版）
 Save Video
 ```
 
+语音转字幕工作流：
+
+```text
+Load Video
+    ↓ VIDEO
+ASR · 语音转字幕
+    ↓ STRING
+（字幕文本可继续用于字幕合成等下游节点）
+```
+
+人像/绿幕抠图工作流：
+
+```text
+Load Video
+    ↓ VIDEO
+Matte · 人像抠图
+    ↓ VIDEO
+Save Video
+```
+
+场景切分 / 高光提取 / 元信息工作流：
+
+```text
+Load Video
+    ↓ VIDEO
+Scene · 场景切分   （或 Highlight · 高光片段提取 / Metadata · 视频元信息）
+    ↓ STRING
+（JSON 时间轴或元数据，可交给分析或可视化节点）
+```
+
 仓库中的 [`example_workflows`](./example_workflows) 提供可导入的示例工作流。
 导入后请重新选择你有权处理的本地视频。
 
 ## 节点参数
+
+### ASR · 语音转字幕
+
+- `content_type`：`auto`、`speech`（对话）或 `singing`（歌唱）。
+- `language`：`auto` 自动探测，或指定 `cmn-Hans-CN` / `eng-US`。
+- `enable_speaker_info`：开启说话人识别。
+- `enable_confidence`：返回识别置信度。
+- 输出：`subtitle` 字幕文本，`raw_json` 完整结果（已脱敏）。
+
+### OCR · 视频识别字幕
+
+- `mode`：`Subtitle` 识别字幕文本；`Detailed` 识别更详细信息。
+- 输出：`subtitle` 字幕文本，`raw_json` 完整结果（已脱敏）。
+
+### Matte · 人像抠图 / Matte · 绿幕抠图
+
+- `output_format`：`WEBM`（默认）或 `MOV` 透明视频格式。
+- 输出：原生 `VIDEO`。
+
+### Scene · 场景切分
+
+- `enable_clip_fade`：将淡入淡出片段作为独立切片。
+- `segment_threshold`：切分敏感度阈值 `[0, 100)`；`0` 使用算法默认值。
+- `min_duration` / `max_duration`：单个切片的最小时长/最大时长（秒）；`0` 使用默认值。
+- 输出：`scenes_json` 切片时间轴，`raw_json` 完整结果（已脱敏）。
+
+### Highlight · 高光片段提取
+
+- `model`：`Miniseries`（短剧）或 `Game`（小游戏）。
+- 输出：`highlights_json` 高光元数据，`raw_json` 完整结果（已脱敏）。
+
+### Metadata · 视频元信息
+
+- 无业务参数。
+- 输出：`metadata_json` 标准元信息，`raw_json` 完整结果（已脱敏）。
 
 ### Enhance · 视频增强
 

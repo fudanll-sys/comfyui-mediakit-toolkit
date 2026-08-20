@@ -4,10 +4,16 @@ import unittest
 from unittest.mock import patch
 
 from mediakit_toolkit.cli import (
+    build_analyze_highlights_arguments,
+    build_asr_subtitles_arguments,
     build_enhance_arguments,
     build_erase_subtitle_arguments,
     build_generative_enhance_arguments,
+    build_matte_video_arguments,
+    build_probe_metadata_arguments,
     build_query_arguments,
+    build_segment_scenes_arguments,
+    build_video_ocr_arguments,
     parse_final_json,
     run_cli,
 )
@@ -198,3 +204,107 @@ class CliExecutionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VideoUnderstandingCommandBuilderTests(unittest.TestCase):
+    def test_asr_defaults_are_minimal(self):
+        args = build_asr_subtitles_arguments("/tmp/in.mp4")
+        self.assertEqual(
+            args,
+            ["--cloud", "video", "asr-subtitles", "--video-url", "/tmp/in.mp4"],
+        )
+
+    def test_asr_includes_optional_flags(self):
+        args = build_asr_subtitles_arguments(
+            "/tmp/in.mp4",
+            content_type="speech",
+            language="cmn-Hans-CN",
+            enable_speaker_info=True,
+            enable_confidence=True,
+        )
+        self.assertEqual(args[args.index("--content-type") + 1], "speech")
+        self.assertEqual(args[args.index("--language") + 1], "cmn-Hans-CN")
+        self.assertIn("--enable-speaker-info", args)
+        self.assertIn("--enable-confidence", args)
+
+    def test_asr_rejects_unknown_content_type(self):
+        with self.assertRaises(MediaKitInputError):
+            build_asr_subtitles_arguments("/tmp/in.mp4", content_type="lecture")
+
+    def test_ocr_uses_default_mode(self):
+        args = build_video_ocr_arguments("/tmp/in.mp4")
+        self.assertNotIn("--mode", args)
+
+    def test_ocr_detailed_mode_is_passed(self):
+        args = build_video_ocr_arguments("/tmp/in.mp4", mode="Detailed")
+        self.assertEqual(args[args.index("--mode") + 1], "Detailed")
+
+    def test_matte_builds_portrait_command(self):
+        args = build_matte_video_arguments(
+            "/tmp/in.mp4", tool="matte-portrait-video"
+        )
+        self.assertEqual(
+            args[:3], ["--cloud", "video", "matte-portrait-video"]
+        )
+        self.assertNotIn("--format", args)
+
+    def test_matte_accepts_mov_format(self):
+        args = build_matte_video_arguments(
+            "/tmp/in.mp4", tool="matte-greenscreen-video", output_format="MOV"
+        )
+        self.assertEqual(args[args.index("--format") + 1], "MOV")
+
+    def test_matte_rejects_unknown_tool(self):
+        with self.assertRaises(MediaKitInputError):
+            build_matte_video_arguments("/tmp/in.mp4", tool="matte-unknown")
+
+    def test_scene_segmentation_passes_all_optional_values(self):
+        args = build_segment_scenes_arguments(
+            "/tmp/in.mp4",
+            enable_clip_fade=True,
+            segment_threshold=10,
+            min_duration=3,
+            max_duration=30,
+        )
+        self.assertEqual(args[args.index("--segment-threshold") + 1], "10")
+        self.assertEqual(args[args.index("--min-duration") + 1], "3")
+        self.assertEqual(args[args.index("--max-duration") + 1], "30")
+        self.assertIn("--enable-clip-fade", args)
+
+    def test_scene_segmentation_rejects_threshold_at_100(self):
+        with self.assertRaises(MediaKitInputError):
+            build_segment_scenes_arguments("/tmp/in.mp4", segment_threshold=100)
+
+    def test_scene_segmentation_rejects_inverted_durations(self):
+        with self.assertRaises(MediaKitInputError):
+            build_segment_scenes_arguments(
+                "/tmp/in.mp4", min_duration=30, max_duration=3
+            )
+
+    def test_highlight_analysis_uses_storyline_cuts_for_miniseries(self):
+        args = build_analyze_highlights_arguments(
+            ["/tmp/in.mp4"], model="Miniseries"
+        )
+        self.assertEqual(
+            args[:3], ["--cloud", "video", "analyze-video-highlights"]
+        )
+        self.assertEqual(args[args.index("--mode") + 1], "StorylineCuts")
+        urls = json.loads(args[args.index("--video-urls") + 1])
+        self.assertEqual(urls, ["/tmp/in.mp4"])
+
+    def test_highlight_analysis_uses_extract_for_game(self):
+        args = build_analyze_highlights_arguments(
+            ["/tmp/in.mp4"], model="Game"
+        )
+        self.assertEqual(args[args.index("--mode") + 1], "HighlightExtract")
+
+    def test_highlight_analysis_rejects_empty_list(self):
+        with self.assertRaises(MediaKitInputError):
+            build_analyze_highlights_arguments([], model="Game")
+
+    def test_probe_metadata_command(self):
+        args = build_probe_metadata_arguments("/tmp/in.mp4")
+        self.assertEqual(
+            args,
+            ["--cloud", "video", "probe-video-metadata", "--video-url", "/tmp/in.mp4"],
+        )
