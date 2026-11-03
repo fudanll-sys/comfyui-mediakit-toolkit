@@ -1,0 +1,7 @@
+{
+  "domain": "image",
+  "tool": "sharpen-image",
+  "modes": [
+    "Cloud"
+  ]
+}

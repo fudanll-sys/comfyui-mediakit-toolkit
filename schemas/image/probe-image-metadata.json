@@ -1,0 +1,7 @@
+{
+  "domain": "image",
+  "tool": "probe-image-metadata",
+  "modes": [
+    "Cloud"
+  ]
+}

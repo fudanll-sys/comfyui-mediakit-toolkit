@@ -16,7 +16,7 @@ MediaKit 云端视频 AI 能力封装为原生 ComfyUI 节点，并在节点内�
 
 | 节点 | 说明 |
 | --- | --- |
-| `MediaKit Environment Check` | 检查 MediaKit CLI、鉴权和运行环境。 |
+| `MediaKit Environment Check` | 检查 MediaKit CLI、鉴权、运行环境与 schema 快照基线。 |
 | `Enhance · 视频增强` | 标准版/专业版视频画质增强，原生 `VIDEO → VIDEO`。 |
 | `Enhance Ultra · 视频增强（大模型版）` | 基于扩散大模型的生成式视频增强修复。 |
 | `Erase Subtitle · 字幕擦除` | 智能检测并擦除视频硬字幕。 |
@@ -28,9 +28,38 @@ MediaKit 云端视频 AI 能力封装为原生 ComfyUI 节点，并在节点内�
 | `Scene · 场景切分` | 依据转场自动切分场景，输出切片时间轴。 |
 | `Highlight · 高光片段提取` | 捕捉情绪波峰与关键动作，输出高光元数据。 |
 | `Metadata · 视频元信息` | 探测视频容器、视频流与音频流元信息。 |
+| `Trim · 视频裁剪` | 按时间范围裁剪视频，原生 `VIDEO → VIDEO`。 |
+| `Extract Audio · 提取音频` | 从视频分离音轨，原生 `VIDEO → AUDIO`。 |
 
 `Enhance · 视频增强` 不是极速版。独立的极速增强能力尚未接入，未来上线后将使用
 单独的节点名称，避免与当前标准版/专业版混淆。
+
+### 运行模式
+
+`Trim · 视频裁剪`、`Extract Audio · 提取音频` 和 `Metadata · 视频元信息` 提供
+`run_mode` 参数：
+
+- `auto`（默认）：检测本机 `mediakit-cli` 是否支持该能力的本地模式；支持则本地
+  同步执行（免费、不产生云端费用），否则回退云端异步任务。
+- `cloud`：强制提交云端任务。
+
+插件不会强制选择本地模式：较旧的 CLI 构建可能不支持 `--local`，强制指定会直接
+失败，因此节点只暴露 `auto` 与 `cloud` 两个选项。
+
+### Schema 快照与版本锁定
+
+仓库的 [`schemas/`](./schemas) 目录保存 MediaKit CLI 全部能力的 JSON Schema
+快照和 `manifest.json` 基线（CLI 版本 + 每个工具的指纹）。`scripts/sync_cli_schemas.py`
+用于同步和验证：
+
+```bash
+python scripts/sync_cli_schemas.py --update    # 用本机 CLI 刷新快照
+python scripts/sync_cli_schemas.py --check     # 对比当前 CLI 与快照，发现漂移（CI 可集成）
+python scripts/sync_cli_schemas.py --offline   # 不调用 CLI，仅校验快照完整性
+```
+
+`--check` 会报告工具新增/消失、参数指纹变化与模式变化。`MediaKit Environment Check`
+节点也会对比安装的 CLI 版本与快照基线，不一致时在诊断详情中提示。
 
 ## 使用前准备
 
@@ -187,6 +216,22 @@ Matte · 人像抠图
 Save Video
 ```
 
+裁剪/提取音频工作流：
+
+```text
+Load Video
+    ↓ VIDEO
+Trim · 视频裁剪
+    ↓ VIDEO
+Save Video
+
+Load Video
+    ↓ VIDEO
+Extract Audio · 提取音频
+    ↓ AUDIO
+（音频可继续连接原生 AUDIO 下游节点）
+```
+
 场景切分 / 高光提取 / 元信息工作流：
 
 ```text
@@ -234,8 +279,20 @@ Scene · 场景切分   （或 Highlight · 高光片段提取 / Metadata · 视
 
 ### Metadata · 视频元信息
 
-- 无业务参数。
+- 无业务参数（`run_mode` 默认 `auto`，CLI 支持本地模式时本地执行）。
 - 输出：`metadata_json` 标准元信息，`raw_json` 完整结果（已脱敏）。
+
+### Trim · 视频裁剪
+
+- `start_time`：裁剪开始时间（秒）。
+- `end_time`：裁剪结束时间（秒）；小于等于开始时间时视为裁剪到视频末尾。
+- `run_mode`：`auto`（默认，本地优先）或 `cloud`。
+
+### Extract Audio · 提取音频
+
+- `output_format`：`mp3`、`m4a`（默认）、`ogg`、`flac`、`wav`。
+- `run_mode`：`auto`（默认，本地优先）或 `cloud`。
+- 输出：原生 `AUDIO`。
 
 ### Enhance · 视频增强
 

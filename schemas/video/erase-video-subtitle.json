@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "erase-video-subtitle",
+  "modes": [
+    "Cloud"
+  ]
+}

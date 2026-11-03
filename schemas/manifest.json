@@ -1,0 +1,533 @@
+{
+  "format": 1,
+  "cli_version": "0.2.2",
+  "generated_at": "2026-11-03T03:17:36.383722+00:00",
+  "domains": {
+    "audio": [
+      {
+        "tool": "detect-voice-activity",
+        "fingerprint": "7f3950462619696df31fb7f7fb66ea00560ea6e5e73fd5c9550ab005b3581c48",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "probe-audio-metadata",
+        "fingerprint": "66d9e41e02873016ed6e38c60cff071ff3b32bed07920af7283bb80eb869eafc",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "separate-voice",
+        "fingerprint": "e99176b7f4806ddac1aae52d4f3ea5d3b43a7ed807eca6fcc4c676a03fca218a",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "transcode-audio",
+        "fingerprint": "8f444526a14f05038a5c8f36461bde390071654bb492c24dd2d8e3aa9cd96a64",
+        "modes": [
+          "Cloud"
+        ]
+      }
+    ],
+    "editing": [
+      {
+        "tool": "add-subtitle-to-video",
+        "fingerprint": "b1d588f2abf663a8d2db524611a8477ac1e32f94ef9e92a507b0b07d310e3004",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "adjust-audio-speed",
+        "fingerprint": "d49546b8f4ef276b6698fc13bcda6a1cf186cec2b53b8a513ac6de59cd3bcc8b",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "adjust-video-speed",
+        "fingerprint": "d92329b1172b301d1c78af0afb9c8e427b1b73b0c374eeb457d3f131b66f374f",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "adjust-video-volume",
+        "fingerprint": "d7e77bd9ebf56a3c2e52420039a637043a34be46d48fa2e1eec06e98e5ffb37e",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "apply-camera-motion",
+        "fingerprint": "f9f202bc61f9e0b40f56f2ed789e18b0a5d3a0eccb4020fce43683975b6a00e7",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "apply-video-filter",
+        "fingerprint": "ef04f9b4edf5dc1866f70584a387efcd10020e1c42521b462c5e0faaa90ecd39",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "concat-audio",
+        "fingerprint": "e58fe2cab5f31109780b44d0b831c91dcc279cf48c472fec85ba19e4bb7898d3",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "concat-video",
+        "fingerprint": "639a5c0d84b41d55fce65e375a1a928c5efb6a74183b3f8f60cf4eec0c9581b6",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "crop-video",
+        "fingerprint": "388d018921306c909b7a6dc0dca57275c76c9e4b3c502ed7732626afa85e8d25",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "extract-animated-image",
+        "fingerprint": "04c3ab9a2df3f23bf0580509b90806f7d57ac4afd514b8489969d04c38592325",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "extract-audio",
+        "fingerprint": "795db87d9e554c3934ea70a104af824d2737c892f4ca46d4cdea349eb114aa61",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "fade-audio",
+        "fingerprint": "fc1b81df27c54c044d464cbc3ee888475fc1123c6a87ac3fd41c701f785123a7",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "fade-video-audio",
+        "fingerprint": "49394fc899107e177aa3f1dca9044a3f5fc9141e15b66bc9fd3f898d46823db9",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "flip-video",
+        "fingerprint": "4c2d32916810de9bc6917e29e8cd73073f1066c578ae47f4d734e1e51b5ac5f7",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "mix-audio",
+        "fingerprint": "cedc11931e71ac66e7909ac1a6543a8d5cb6a9b0cdee40052487b5d8f659f6c8",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "mux-audio-video",
+        "fingerprint": "007ea0a7cbfe794229a43e9448aba7e63a6528abb12097c16e070ff93217b363",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "rotate-video",
+        "fingerprint": "feac9b1e312c3e185a1ce1b22bcc03614d56d278478ef8df062b62570e920b5a",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "stitch-video",
+        "fingerprint": "195016359c03154f9c82661321d0c942d5720468aa54daac13dfdd3d9b7e7557",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "trim-audio",
+        "fingerprint": "3b4ddf2dfcd64fd3960575df56d891dc50b5310925cd7560c7e415b810a88d64",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "trim-video",
+        "fingerprint": "aa54b58e3747ff52571b87f01174c6fe2a74b0a1190bad0fb214a65b001c0108",
+        "modes": [
+          "Cloud"
+        ]
+      }
+    ],
+    "image": [
+      {
+        "tool": "add-image-watermark",
+        "fingerprint": "934f6a16dda3df46fac381c2314418fe52bd34766f418b17b1a16ebe3a28fe7b",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "adjust-image-color",
+        "fingerprint": "33d8262c48c1db0b9bd5effd1637f2bf0ed909581a5c7cefc67adcdd34efa666",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "compress-image",
+        "fingerprint": "82f043d9a1a5d7a9fd5bc7e43b9290add6be429a6660e41ef688f68e46ff78a9",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "crop-image",
+        "fingerprint": "1c45367ca4759e85621cf2de626595d4b291cf18f9bcddcc222c955a4ce11ef3",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "enhance-image",
+        "fingerprint": "27a71f31424ba2fcb6ed7b0fdcf24e32677726bb3d42eb4eae51af11d07a8088",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "erase-image",
+        "fingerprint": "da359a68f1ae1a328572d23eff99b9925911f0be163cbbafbdb0e520f7a4600b",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "evaluate-image-quality",
+        "fingerprint": "31649150cbf2f699b3215a8f211606a6ee6ace3072efcec2573e6481b49189a7",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "face-blur-image",
+        "fingerprint": "0083b7d992e535cc9adb885a6a3cdd8a279606c636da55b93223d359cedf6fbe",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "flip-image",
+        "fingerprint": "b6b0a793e717a528ef0e6d22764659874ec15295b5934d3b13c914b12115058a",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "gaussian-blur-image",
+        "fingerprint": "9be03f28ffac82578453d6e024f46bc81b747497b17629c43e5d5ccd47dd149d",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "image-ocr",
+        "fingerprint": "e6be6bee0598c6788a448f66877d4ad8079227342f4a07012c2fe2c41bdff833",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "invert-image",
+        "fingerprint": "db799c828518838929aa61ed47350c2074142b83425df4de066669c4377c6af2",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "mosaic-image",
+        "fingerprint": "9ce2a6e4f7d8091624ab468b773a87fbd8ade1141c79373f180b6156039d6c30",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "probe-image-metadata",
+        "fingerprint": "d2bcefcb28b32ef3c0f5ad9e9582030ee8c05e734a49c11ac397ae0c6772681d",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "remove-image-background",
+        "fingerprint": "308b5ff1b38fc40bdeddc926363b4a5b514f2a3c62bf09a41dfc50d215a8c4b1",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "resize-image",
+        "fingerprint": "0f9511b1ddc1cf349f2770c896c7a536873d359bb2f5ce2e4551af405445d68b",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "rotate-image",
+        "fingerprint": "c54dd201190d5e647b027293d4dbd6fbe3c9a8e115cf57ad5ddb9224f8fe7b2c",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "round-corner-image",
+        "fingerprint": "e51c2f76c87addd386639263ba9b79a58c6acf49675eb0f2b4bb2b4a223418c3",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "sharpen-image",
+        "fingerprint": "0dd7e3c7a1d088866e25f3e65ddc0aac2f9bf124cbf89852c94aef2d59d33e04",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "slim-image",
+        "fingerprint": "071d595e3092ff9f9ea6774dac25762876802b1dedb019cb3632bad90bb17bc6",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "smart-crop-image",
+        "fingerprint": "e47c34160156ec86fc207c7f93b8afe1e579a125fd9ec8088d8792b78477942b",
+        "modes": [
+          "Cloud"
+        ]
+      }
+    ],
+    "video": [
+      {
+        "tool": "add-video-invisible-watermark",
+        "fingerprint": "0299b2949b10373cde7250d217cd68145bc9cdedcdcdb6aa53847c20bfda6745",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "analyze-video-highlights",
+        "fingerprint": "231436d0f50f776ef8b78bba0ec1cbab28600ab1744cb657c8bb041713a769c9",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "analyze-video-storyline",
+        "fingerprint": "8e64fc35bbeaa1376c7a1904643498fc18a0ec883f386ffdbade717c12752e6e",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "asr-subtitles",
+        "fingerprint": "7de6e5dfe1537a5f1d8b4bcfbc541dab4f26282762317c259f73e7cb4bbacdeb",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "assess-video-quality",
+        "fingerprint": "f7be5648ef4fc3d4c4b5f48d6a0ef4b50c5062482375ac07e2cdec7110148944",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "drama-recap",
+        "fingerprint": "4bfa76cafa8fe432d55c3fd65a32bb92abec14d0fd71132eea463c70ecfcd773",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "drama-recap-vertical",
+        "fingerprint": "ba8e7c0310273ad5219f3ae3deb22398bdd8a06527c76fbc8d602810526b5fe2",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "drama-script",
+        "fingerprint": "d3d578b9f8c9ad5e26de86b701d949c8997cdbdcb8bc51acd5b96f8475ebaf38",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "enhance-video",
+        "fingerprint": "54b39a21a53519c5ff0ed11db1fdcd434e9f0cb6c80f193b0c14d39b4be80aa3",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "enhance-video-fast",
+        "fingerprint": "8739b1dfa667e1218997a083e45c2bd3f90a1ea00bda7a7e425bfc3d1bea20f8",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "enhance-video-generative",
+        "fingerprint": "4f8e44b9bbb461bcc87e9c30c9dceb1fb3c5bb68cf8908acd4172e8f51c3e09d",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "erase-video-subtitle",
+        "fingerprint": "68a951230103ecec9572b089a5e4adca56b3b4224003003a552ca7cd076a403f",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "erase-video-subtitle-pro",
+        "fingerprint": "2fe4fe174dd2b2ff667d7f58dfd1fff79d974b5d9b4ff247c51d5c7d27212f4e",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "extract-frames",
+        "fingerprint": "5d062683a9977c636844b7f4f3da42c747a53480074d1500203a9f18f4c54800",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "extract-video-invisible-watermark",
+        "fingerprint": "a2fadc1f7d33c29e34c39e6f850e6246e68b51b586ca348837969c36fa2895ee",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "face-blur-video",
+        "fingerprint": "1198d5e834adf8b79f289fe3af377060023abb519532dc80a46f550eb1b247cd",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "generate-highlights-microdrama",
+        "fingerprint": "2ee616f00a1c41d237278756ffabb29f237a0111161d15e6a23adee48e132d0f",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "generate-highlights-minigame",
+        "fingerprint": "4f57ec552300db2c232fc04973b34f4fe31e5293782d78bb94d50c0a8b490746",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "generate-highlights-movie",
+        "fingerprint": "8ea13d6e9c0cd39567765846b1771119457821cf450468610664ddcb052f200d",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "martencode-video",
+        "fingerprint": "194209b022dda962efbb79867b599c0a784e513eca7e6de2d9395ffe470aeff9",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "matte-greenscreen-video",
+        "fingerprint": "cd091b9a9424f47c6ac57d1c32a963d9c3e6d4390da259f06446fc2a408ec2f0",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "matte-portrait-video",
+        "fingerprint": "50365294936c1448d930379dbe2a29015e9da24aeccdab79903f73e1fd6efcad",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "probe-video-metadata",
+        "fingerprint": "b5c71742bd312854248552cc63270a84b7b1715a2512e98835d15e9b28054a7f",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "remux-video",
+        "fingerprint": "a1657f3d010aca16c27a37d06ad42a44ab5a4649579a832da0beed1270af2895",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "segment-scenes",
+        "fingerprint": "3baba35aebc974063c9fe0a360b2ec31306e98ed5dc5556d2d00b26f646046e3",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "semantic-segment",
+        "fingerprint": "45978db27266d86c7d106dc12d626da366bd281d928383b4e6e6b773a2529d75",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "transcode-video",
+        "fingerprint": "0f4115d71dd9499da3339e6040fc67df0d2e6542a8faff8b665472450ddb6d87",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "video-ocr",
+        "fingerprint": "be0ca85ec700e40063480651fbe888c93c0ee81da18cfb2071342921025aad3e",
+        "modes": [
+          "Cloud"
+        ]
+      },
+      {
+        "tool": "video-understand-router",
+        "fingerprint": "bbd77ee300f6d79c429c26d1e53a807c10ce3e9a7d80c6937195eae3480074cd",
+        "modes": [
+          "Cloud"
+        ]
+      }
+    ]
+  }
+}

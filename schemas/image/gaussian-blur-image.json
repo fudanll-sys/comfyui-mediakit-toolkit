@@ -1,0 +1,7 @@
+{
+  "domain": "image",
+  "tool": "gaussian-blur-image",
+  "modes": [
+    "Cloud"
+  ]
+}

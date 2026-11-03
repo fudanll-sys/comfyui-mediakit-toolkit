@@ -20,6 +20,20 @@ restoration:
 Load Video → Enhance Ultra · 视频增强（大模型版） → Save Video
 ```
 
+`mediakit_video_trim.json` demonstrates local-first trimming:
+
+```text
+Load Video → Trim · 视频裁剪 → Save Video
+```
+
+`mediakit_video_extract_audio.json` demonstrates audio-track extraction:
+
+```text
+Load Video → Extract Audio · 提取音频 → Save Audio
+```
+
 The workflows require a recent ComfyUI build that includes the native
-`LoadVideo` and `SaveVideo` nodes. Select your own authorized MP4 input after
-importing one. Running either workflow submits a paid MediaKit cloud task.
+`LoadVideo`, `SaveVideo`, and `SaveAudio` nodes. Select your own authorized
+MP4 input after importing one. Running a video AI workflow submits a paid
+MediaKit cloud task; trimming and audio extraction run locally when the
+installed CLI supports it.

@@ -1,0 +1,7 @@
+{
+  "domain": "audio",
+  "tool": "transcode-audio",
+  "modes": [
+    "Cloud"
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "domain": "image",
+  "tool": "crop-image",
+  "modes": [
+    "Cloud"
+  ]
+}

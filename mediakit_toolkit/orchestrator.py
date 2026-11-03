@@ -10,16 +10,45 @@ from .cli import (
     build_asr_subtitles_arguments,
     build_enhance_arguments,
     build_erase_subtitle_arguments,
+    build_extract_audio_arguments,
     build_generative_enhance_arguments,
     build_matte_video_arguments,
     build_probe_metadata_arguments,
     build_query_arguments,
     build_segment_scenes_arguments,
+    build_trim_video_arguments,
     build_video_ocr_arguments,
     run_cli_async,
+    supported_modes,
 )
 from .errors import MediaKitTaskError
 from .logging_utils import log_event
+
+
+def resolve_run_mode(domain: str, tool: str, requested: str) -> str:
+    """Decide between ``local`` and ``cloud`` execution.
+
+    ``requested`` is ``auto`` (use local when the installed CLI supports it,
+    otherwise cloud) or ``cloud`` (force cloud). ``local`` is never forced
+    from node parameters: older CLI builds do not implement local mode, so a
+    forced selection would fail at runtime.
+    """
+    if requested == "cloud":
+        return "cloud"
+    modes = supported_modes(domain, tool)
+    if "Local" in modes or "local" in modes:
+        return "local"
+    return "cloud"
+
+
+def _local_result_path(payload: dict[str, Any]) -> Path:
+    """Extract the output path of a synchronous local-mode CLI result."""
+    value = payload.get("video_url")
+    if not value and isinstance(payload.get("result"), dict):
+        value = payload["result"].get("video_url")
+    if not isinstance(value, str) or not value:
+        raise MediaKitTaskError("MediaKit 本地任务完成，但未返回输出路径。")
+    return Path(value).expanduser().resolve()
 
 
 def _task_id(payload: dict[str, Any]) -> str:
@@ -332,12 +361,90 @@ async def analyze_video_highlights(
 async def probe_video_metadata(
     video_path: Path,
     *,
+    run_mode: str = "auto",
     poll_interval_seconds: int,
     max_poll_attempts: int,
 ) -> tuple[dict[str, Any], str]:
+    mode = resolve_run_mode("video", "probe-video-metadata", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="probe-video-metadata")
+        result = await run_cli_async(
+            build_probe_metadata_arguments(str(video_path), run_mode="local"),
+            timeout=600,
+        )
+        return _flatten_result(result.payload), ""
     return await _run_cloud_task(
         build_probe_metadata_arguments(str(video_path)),
         capability="probe-video-metadata",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def trim_video(
+    video_path: Path,
+    *,
+    start_time: float,
+    end_time: float | None,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Trim a video locally when supported, otherwise through the cloud."""
+    mode = resolve_run_mode("editing", "trim-video", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-trim-video")
+        result = await run_cli_async(
+            build_trim_video_arguments(
+                str(video_path),
+                start_time=start_time,
+                end_time=end_time,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_trim_video_arguments(
+            str(video_path),
+            start_time=start_time,
+            end_time=end_time,
+            run_mode="cloud",
+        ),
+        capability="editing-trim-video",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def extract_audio(
+    video_path: Path,
+    *,
+    output_format: str,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Extract an audio track locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "extract-audio", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-extract-audio")
+        result = await run_cli_async(
+            build_extract_audio_arguments(
+                str(video_path),
+                output_format=output_format,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_extract_audio_arguments(
+            str(video_path),
+            output_format=output_format,
+            run_mode="cloud",
+        ),
+        capability="editing-extract-audio",
         poll_interval_seconds=poll_interval_seconds,
         max_poll_attempts=max_poll_attempts,
     )

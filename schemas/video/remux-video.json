@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "remux-video",
+  "modes": [
+    "Cloud"
+  ]
+}

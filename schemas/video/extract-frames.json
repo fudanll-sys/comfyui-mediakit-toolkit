@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "extract-frames",
+  "modes": [
+    "Cloud"
+  ]
+}

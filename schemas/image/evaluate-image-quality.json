@@ -1,0 +1,7 @@
+{
+  "domain": "image",
+  "tool": "evaluate-image-quality",
+  "modes": [
+    "Cloud"
+  ]
+}

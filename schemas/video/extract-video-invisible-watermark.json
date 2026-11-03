@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "extract-video-invisible-watermark",
+  "modes": [
+    "Cloud"
+  ]
+}

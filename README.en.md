@@ -19,7 +19,7 @@ Version `0.3.0` currently provides:
 
 | Node | Description |
 | --- | --- |
-| `MediaKit Environment Check` | Checks MediaKit CLI, authentication, and the runtime environment. |
+| `MediaKit Environment Check` | Checks MediaKit CLI, authentication, runtime, and the schema snapshot baseline. |
 | `Enhance · 视频增强` | Standard or professional video enhancement with native `VIDEO → VIDEO`. |
 | `Enhance Ultra · 视频增强（大模型版）` | Diffusion-based generative video restoration. |
 | `Erase Subtitle · 字幕擦除` | Automatic hard-subtitle detection and removal. |
@@ -31,10 +31,43 @@ Version `0.3.0` currently provides:
 | `Scene · 场景切分` | Automatic scene segmentation that outputs a clip timeline. |
 | `Highlight · 高光片段提取` | Extracts highlight timestamps, scores, and metadata. |
 | `Metadata · 视频元信息` | Probes container, video-stream, and audio-stream metadata. |
+| `Trim · 视频裁剪` | Time-range video trimming with native `VIDEO → VIDEO`. |
+| `Extract Audio · 提取音频` | Separates the audio track with native `VIDEO → AUDIO`. |
 
 `Enhance · 视频增强` is not the fast edition. A dedicated fast-enhancement
 capability has not been integrated yet and will use a separate node name when
 it becomes available.
+
+### Run modes
+
+`Trim · 视频裁剪`, `Extract Audio · 提取音频`, and `Metadata · 视频元信息` expose
+a `run_mode` parameter:
+
+- `auto` (default): detects whether the installed `mediakit-cli` supports local
+  execution for the capability; local runs are synchronous and free, otherwise
+  the node falls back to a cloud task.
+- `cloud`: always submits a cloud task.
+
+The plugin never forces local mode: older CLI builds may not implement
+`--local`, and forcing it would fail at runtime, so nodes only expose `auto`
+and `cloud`.
+
+### Schema snapshots and version locking
+
+The [`schemas/`](./schemas) directory stores JSON Schema snapshots of every
+MediaKit CLI capability plus a `manifest.json` baseline (CLI version and a
+fingerprint per tool). `scripts/sync_cli_schemas.py` syncs and verifies them:
+
+```bash
+python scripts/sync_cli_schemas.py --update    # refresh snapshots from local CLI
+python scripts/sync_cli_schemas.py --check     # detect drift vs snapshots (CI-ready)
+python scripts/sync_cli_schemas.py --offline   # validate snapshots without the CLI
+```
+
+`--check` reports added/removed tools, fingerprint changes, and mode changes.
+The `MediaKit Environment Check` node also compares the installed CLI version
+with the snapshot baseline and warns in the diagnostic details when they
+differ.
 
 ## Requirements
 
@@ -246,8 +279,22 @@ Select your own authorized local video after importing one.
 
 ### Metadata · 视频元信息
 
-- No business parameters.
+- No business parameters (`run_mode` defaults to `auto`, which runs locally when
+  the CLI supports it).
 - Outputs: `metadata_json` and a redacted `raw_json` payload.
+
+### Trim · 视频裁剪
+
+- `start_time`: trim start in seconds.
+- `end_time`: trim end in seconds; a value at or below `start_time` means
+  "trim to the end of the video".
+- `run_mode`: `auto` (default, local-first) or `cloud`.
+
+### Extract Audio · 提取音频
+
+- `output_format`: `mp3`, `m4a` (default), `ogg`, `flac`, or `wav`.
+- `run_mode`: `auto` (default, local-first) or `cloud`.
+- Output: native `AUDIO`.
 
 ### Enhance · 视频增强
 

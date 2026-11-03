@@ -8,16 +8,20 @@ from mediakit_toolkit.cli import (
     build_asr_subtitles_arguments,
     build_enhance_arguments,
     build_erase_subtitle_arguments,
+    build_extract_audio_arguments,
     build_generative_enhance_arguments,
     build_matte_video_arguments,
     build_probe_metadata_arguments,
     build_query_arguments,
     build_segment_scenes_arguments,
+    build_trim_video_arguments,
     build_video_ocr_arguments,
     parse_final_json,
     run_cli,
+    supported_modes,
 )
 from mediakit_toolkit.errors import (
+    MediaKitCommandError,
     MediaKitConfigurationError,
     MediaKitInputError,
     MediaKitTaskError,
@@ -155,6 +159,79 @@ class CommandBuilderTests(unittest.TestCase):
                     "bottom_right_y": 1,
                 },
             )
+
+
+class EditingCommandBuilderTests(unittest.TestCase):
+    def test_trim_cloud_arguments(self):
+        args = build_trim_video_arguments(
+            "/tmp/input.mp4", start_time=3.5, end_time=8, run_mode="cloud"
+        )
+        self.assertEqual(
+            args,
+            [
+                "--cloud",
+                "editing",
+                "trim-video",
+                "--video-url",
+                "/tmp/input.mp4",
+                "--start-time",
+                "3.5",
+                "--end-time",
+                "8",
+            ],
+        )
+
+    def test_trim_local_arguments(self):
+        args = build_trim_video_arguments(
+            "/tmp/input.mp4", start_time=0, end_time=None, run_mode="local"
+        )
+        self.assertEqual(args[:4], ["--local", "editing", "trim-video", "--video-url"])
+        self.assertNotIn("--end-time", args)
+
+    def test_trim_rejects_invalid_time_range(self):
+        with self.assertRaises(MediaKitInputError):
+            build_trim_video_arguments("/tmp/input.mp4", start_time=-1, run_mode="cloud")
+        with self.assertRaises(MediaKitInputError):
+            build_trim_video_arguments("/tmp/input.mp4", start_time=5, end_time=5, run_mode="cloud")
+        with self.assertRaises(MediaKitInputError):
+            build_trim_video_arguments("/tmp/input.mp4", start_time=0, run_mode="local-first")
+
+    def test_extract_audio_defaults_to_m4a_without_flag(self):
+        args = build_extract_audio_arguments("/tmp/input.mp4", run_mode="cloud")
+        self.assertEqual(args[:3], ["--cloud", "editing", "extract-audio"])
+        self.assertNotIn("--format", args)
+
+    def test_extract_audio_custom_format_and_local(self):
+        args = build_extract_audio_arguments(
+            "/tmp/input.mp4", output_format="mp3", run_mode="local"
+        )
+        self.assertEqual(args[0], "--local")
+        self.assertEqual(args[args.index("--format") + 1], "mp3")
+
+    def test_extract_audio_rejects_unknown_format(self):
+        with self.assertRaises(MediaKitInputError):
+            build_extract_audio_arguments("/tmp/input.mp4", output_format="aac", run_mode="cloud")
+
+    def test_probe_metadata_supports_run_mode(self):
+        self.assertEqual(
+            build_probe_metadata_arguments("/tmp/input.mp4")[:2], ["--cloud", "video"]
+        )
+        self.assertEqual(
+            build_probe_metadata_arguments("/tmp/input.mp4", run_mode="local")[0], "--local"
+        )
+
+    def test_supported_modes_parses_help_output(self):
+        with patch("mediakit_toolkit.cli.run_cli") as run:
+            run.return_value = type(
+                "P", (), {"stdout": "支持模式: Cloud, Local\n", "stderr": "", "returncode": 0}
+            )()
+            self.assertEqual(
+                supported_modes("editing", "trim-video"), {"Cloud", "Local"}
+            )
+
+    def test_supported_modes_empty_on_cli_failure(self):
+        with patch("mediakit_toolkit.cli.run_cli", side_effect=MediaKitCommandError("x")):
+            self.assertEqual(supported_modes("editing", "trim-video"), set())
 
 
 class CliExecutionTests(unittest.TestCase):

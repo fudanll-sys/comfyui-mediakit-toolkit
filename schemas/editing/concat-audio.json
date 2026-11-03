@@ -1,0 +1,7 @@
+{
+  "domain": "editing",
+  "tool": "concat-audio",
+  "modes": [
+    "Cloud"
+  ]
+}

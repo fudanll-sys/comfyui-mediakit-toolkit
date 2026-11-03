@@ -1,0 +1,7 @@
+{
+  "domain": "image",
+  "tool": "face-blur-image",
+  "modes": [
+    "Cloud"
+  ]
+}

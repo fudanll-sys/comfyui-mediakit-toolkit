@@ -9,6 +9,7 @@ from .nodes.video_ai import (
     MediaKitVideoEnhance,
     MediaKitVideoEnhanceGenerative,
 )
+from .nodes.video_editing import MediaKitExtractAudio, MediaKitTrimVideo
 from .nodes.video_understanding import (
     MediaKitVideoAnalyzeHighlights,
     MediaKitVideoASR,
@@ -35,6 +36,8 @@ class MediaKitToolkitExtension(ComfyExtension):
             MediaKitVideoSegmentScenes,
             MediaKitVideoAnalyzeHighlights,
             MediaKitVideoProbeMetadata,
+            MediaKitTrimVideo,
+            MediaKitExtractAudio,
         ]
 
 

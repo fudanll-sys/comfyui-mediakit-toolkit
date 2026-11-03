@@ -1,0 +1,7 @@
+{
+  "domain": "audio",
+  "tool": "separate-voice",
+  "modes": [
+    "Cloud"
+  ]
+}

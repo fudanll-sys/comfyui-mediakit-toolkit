@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "matte-greenscreen-video",
+  "modes": [
+    "Cloud"
+  ]
+}

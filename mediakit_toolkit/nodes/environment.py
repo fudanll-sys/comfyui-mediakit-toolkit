@@ -5,11 +5,28 @@ from __future__ import annotations
 import json
 import platform
 import shutil
+from pathlib import Path
 
 from comfy_api.latest import io
 
 from ..cli import cli_version, find_cli, run_cli
 from ..redaction import redact_text
+
+_SCHEMAS_MANIFEST = (
+    Path(__file__).resolve().parent.parent.parent / "schemas" / "manifest.json"
+)
+
+
+def _schema_baseline() -> dict[str, str]:
+    """Return the CLI version the bundled schema snapshots were generated from."""
+    try:
+        manifest = json.loads(_SCHEMAS_MANIFEST.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {
+        "snapshot_cli_version": str(manifest.get("cli_version", "")),
+        "snapshot_generated_at": str(manifest.get("generated_at", "")),
+    }
 
 
 class MediaKitEnvironmentCheck(io.ComfyNode):
@@ -38,6 +55,7 @@ class MediaKitEnvironmentCheck(io.ComfyNode):
             "node": shutil.which("node"),
             "npm": shutil.which("npm"),
         }
+        details.update(_schema_baseline())
         try:
             details["mediakit_cli"] = find_cli()
             details["mediakit_cli_version"] = cli_version()
@@ -46,6 +64,13 @@ class MediaKitEnvironmentCheck(io.ComfyNode):
                 details["doctor_ok"] = doctor.returncode == 0
                 details["doctor_output"] = redact_text(
                     (doctor.stdout or doctor.stderr)[-5000:]
+                )
+            installed = str(details.get("mediakit_cli_version", ""))
+            baseline = str(details.get("snapshot_cli_version", ""))
+            if baseline and installed and installed != baseline:
+                details["schema_drift"] = (
+                    f"CLI 版本 {installed} 与 schema 快照基线 {baseline} 不一致，"
+                    "请运行 scripts/sync_cli_schemas.py --update 后重新验证。"
                 )
             status = "ready" if details.get("doctor_ok", True) else "warning"
         except Exception as exc:  # Diagnostic nodes return details instead of failing.

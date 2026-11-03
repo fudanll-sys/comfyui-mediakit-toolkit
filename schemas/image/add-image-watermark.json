@@ -1,0 +1,7 @@
+{
+  "domain": "image",
+  "tool": "add-image-watermark",
+  "modes": [
+    "Cloud"
+  ]
+}

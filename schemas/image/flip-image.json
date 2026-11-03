@@ -1,0 +1,7 @@
+{
+  "domain": "image",
+  "tool": "flip-image",
+  "modes": [
+    "Cloud"
+  ]
+}

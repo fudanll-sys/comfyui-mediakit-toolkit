@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "add-video-invisible-watermark",
+  "modes": [
+    "Cloud"
+  ]
+}

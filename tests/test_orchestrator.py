@@ -9,11 +9,14 @@ from mediakit_toolkit.orchestrator import (
     enhance_video,
     enhance_video_generative,
     erase_video_subtitle,
+    extract_audio,
     find_subtitle_url,
     matte_video,
     ocr_video_subtitles,
     probe_video_metadata,
+    resolve_run_mode,
     segment_video_scenes,
+    trim_video,
 )
 
 
@@ -264,3 +267,95 @@ class VideoUnderstandingOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             find_subtitle_url(payload), "https://x/a.srt"
         )
+
+
+class RunModeTests(unittest.TestCase):
+    def test_cloud_request_stays_cloud(self):
+        with patch("mediakit_toolkit.orchestrator.supported_modes", return_value={"Cloud", "Local"}):
+            self.assertEqual(resolve_run_mode("editing", "trim-video", "cloud"), "cloud")
+
+    def test_auto_uses_local_when_supported(self):
+        with patch("mediakit_toolkit.orchestrator.supported_modes", return_value={"Cloud", "Local"}):
+            self.assertEqual(resolve_run_mode("editing", "trim-video", "auto"), "local")
+
+    def test_auto_falls_back_to_cloud_when_unsupported(self):
+        with patch("mediakit_toolkit.orchestrator.supported_modes", return_value={"Cloud"}):
+            self.assertEqual(resolve_run_mode("editing", "trim-video", "auto"), "cloud")
+
+    def test_auto_falls_back_to_cloud_on_unknown_modes(self):
+        with patch("mediakit_toolkit.orchestrator.supported_modes", return_value=set()):
+            self.assertEqual(resolve_run_mode("video", "probe-video-metadata", "auto"), "cloud")
+
+
+class EditingOrchestratorTests(unittest.IsolatedAsyncioTestCase):
+    @patch("mediakit_toolkit.orchestrator.supported_modes", return_value={"Cloud", "Local"})
+    @patch("mediakit_toolkit.orchestrator.run_cli_async", new_callable=AsyncMock)
+    async def test_trim_video_local_returns_local_path(self, run_cli_async, _modes):
+        run_cli_async.return_value = CommandResult(
+            {"video_url": "./out_trim-video.mp4", "duration": 5.0}, "", "", 0
+        )
+        result_url, task_id = await trim_video(
+            Path("/tmp/in.mp4"),
+            start_time=0,
+            end_time=5,
+            run_mode="auto",
+            poll_interval_seconds=10,
+            max_poll_attempts=20,
+        )
+        self.assertEqual(task_id, "")
+        self.assertTrue(result_url.endswith("out_trim-video.mp4"))
+        self.assertEqual(run_cli_async.await_count, 1)
+        self.assertEqual(run_cli_async.await_args.args[0][0], "--local")
+
+    @patch("mediakit_toolkit.orchestrator.supported_modes", return_value={"Cloud"})
+    @patch("mediakit_toolkit.orchestrator.run_cli_async", new_callable=AsyncMock)
+    async def test_trim_video_falls_back_to_cloud(self, run_cli_async, _modes):
+        run_cli_async.side_effect = [
+            CommandResult({"task_id": "task-trim"}, "", "", 0),
+            CommandResult({"status": "completed", "video_url": "https://example.com/trim.mp4"}, "", "", 0),
+        ]
+        result_url, task_id = await trim_video(
+            Path("/tmp/in.mp4"),
+            start_time=0,
+            end_time=None,
+            run_mode="auto",
+            poll_interval_seconds=10,
+            max_poll_attempts=20,
+        )
+        self.assertEqual(task_id, "task-trim")
+        self.assertEqual(result_url, "https://example.com/trim.mp4")
+        self.assertEqual(run_cli_async.await_count, 2)
+        self.assertEqual(run_cli_async.await_args_list[0].args[0][0], "--cloud")
+
+    @patch("mediakit_toolkit.orchestrator.supported_modes", return_value={"Cloud", "Local"})
+    @patch("mediakit_toolkit.orchestrator.run_cli_async", new_callable=AsyncMock)
+    async def test_extract_audio_local(self, run_cli_async, _modes):
+        run_cli_async.return_value = CommandResult(
+            {"video_url": "/tmp/out.m4a"}, "", "", 0
+        )
+        result_url, task_id = await extract_audio(
+            Path("/tmp/in.mp4"),
+            output_format="m4a",
+            run_mode="auto",
+            poll_interval_seconds=10,
+            max_poll_attempts=20,
+        )
+        self.assertEqual(task_id, "")
+        self.assertEqual(result_url, str(Path("/tmp/out.m4a").resolve()))
+        self.assertIn("extract-audio", run_cli_async.await_args.args[0])
+
+    @patch("mediakit_toolkit.orchestrator.supported_modes", return_value={"Cloud", "Local"})
+    @patch("mediakit_toolkit.orchestrator.run_cli_async", new_callable=AsyncMock)
+    async def test_probe_metadata_local_when_supported(self, run_cli_async, _modes):
+        run_cli_async.return_value = CommandResult(
+            {"video_stream_meta": {"width": 1080}, "duration": 10.0}, "", "", 0
+        )
+        payload, task_id = await probe_video_metadata(
+            Path("/tmp/in.mp4"),
+            run_mode="auto",
+            poll_interval_seconds=10,
+            max_poll_attempts=20,
+        )
+        self.assertEqual(task_id, "")
+        self.assertEqual(payload["video_stream_meta"]["width"], 1080)
+        self.assertEqual(run_cli_async.await_args.args[0][0], "--local")

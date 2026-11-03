@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "segment-scenes",
+  "modes": [
+    "Cloud"
+  ]
+}

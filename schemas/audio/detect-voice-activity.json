@@ -1,0 +1,7 @@
+{
+  "domain": "audio",
+  "tool": "detect-voice-activity",
+  "modes": [
+    "Cloud"
+  ]
+}

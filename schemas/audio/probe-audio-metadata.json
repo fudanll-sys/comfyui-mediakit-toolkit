@@ -1,0 +1,7 @@
+{
+  "domain": "audio",
+  "tool": "probe-audio-metadata",
+  "modes": [
+    "Cloud"
+  ]
+}

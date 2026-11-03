@@ -419,6 +419,14 @@ class MediaKitVideoProbeMetadata(io.ComfyNode):
             description="探测视频容器、视频流与音频流元信息。",
             inputs=[
                 io.Video.Input("video"),
+                io.Combo.Input(
+                    "run_mode",
+                    options=["auto", "cloud"],
+                    default="auto",
+                    tooltip=(
+                        "auto 使用本地模式（如 CLI 支持）；cloud 强制提交云端任务。"
+                    ),
+                ),
                 io.Int.Input(
                     "poll_interval_seconds",
                     default=10,
@@ -444,12 +452,14 @@ class MediaKitVideoProbeMetadata(io.ComfyNode):
     async def execute(
         cls,
         video: object,
+        run_mode: str = "auto",
         poll_interval_seconds: int = 10,
         max_poll_attempts: int = 720,
     ) -> io.NodeOutput:
         with materialize_video(video) as video_path:
             payload, _task_id = await probe_video_metadata(
                 video_path,
+                run_mode=run_mode,
                 poll_interval_seconds=poll_interval_seconds,
                 max_poll_attempts=max_poll_attempts,
             )

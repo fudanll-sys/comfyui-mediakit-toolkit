@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Add `Trim · 视频裁剪` and `Extract Audio · 提取音频` editing nodes with
+  native `VIDEO → VIDEO` / `VIDEO → AUDIO` interfaces.
+- Add mode-adaptive execution: nodes expose `run_mode` (`auto`/`cloud`) and use
+  local synchronous execution when the installed CLI supports it, otherwise
+  fall back to cloud tasks. `Metadata · 视频元信息` adopts the same parameter.
+- Add the MediaKit CLI schema synchronization script
+  (`scripts/sync_cli_schemas.py`) with `--update`, `--check`, `--json` and
+  `--offline` modes, plus a committed snapshot tree (`schemas/`) covering all
+  CLI capabilities with a versioned `manifest.json` baseline.
+- Add CLI version vs schema-baseline drift detection to the
+  `MediaKit Environment Check` node.
+- Extend the media bridge with AUDIO/IMAGE materialization, multi-input list
+  materialization, and native AUDIO/IMAGE output downloads.
+- Generate the initial schema snapshot baseline from CLI 0.2.2 (video 29,
+  editing 20, image 21, audio 4 = 74 tools).
+
+## 0.3.0 - 2026-08-05
+
 - Add cloud video understanding and analysis nodes: ASR speech-to-subtitle,
   video OCR, portrait and greenscreen matting, scene segmentation, highlight
   analysis, and video metadata probing.

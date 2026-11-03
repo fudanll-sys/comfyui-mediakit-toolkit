@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "asr-subtitles",
+  "modes": [
+    "Cloud"
+  ]
+}

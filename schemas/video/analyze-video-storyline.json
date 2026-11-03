@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "analyze-video-storyline",
+  "modes": [
+    "Cloud"
+  ]
+}

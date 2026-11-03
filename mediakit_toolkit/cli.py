@@ -435,6 +435,76 @@ def build_analyze_highlights_arguments(
     ]
 
 
-def build_probe_metadata_arguments(video_path: str) -> list[str]:
-    """Build the official cloud video-metadata probe command."""
-    return ["--cloud", "video", "probe-video-metadata", "--video-url", video_path]
+def build_probe_metadata_arguments(
+    video_path: str,
+    *,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-metadata probe command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    return prefix + ["video", "probe-video-metadata", "--video-url", video_path]
+
+
+def supported_modes(domain: str, tool: str) -> set[str]:
+    """Return the modes a capability supports, e.g. {"Cloud", "Local"}.
+
+    Parsed from ``<domain> <tool> --help`` output. An empty set means the
+    information is unavailable (unknown CLI version or a transient error),
+    and callers must fall back to cloud-only behavior.
+    """
+    try:
+        result = run_cli([domain, tool, "--help"], timeout=60, expect_json=False)
+    except MediaKitCommandError:
+        return set()
+    text = result.stdout or result.stderr
+    modes: set[str] = set()
+    for line in text.splitlines():
+        if "支持模式" in line:
+            _head, _sep, rest = line.partition(":")
+            for token in rest.split(","):
+                token = token.strip()
+                if token:
+                    modes.add(token)
+    return modes
+
+
+def build_trim_video_arguments(
+    video_path: str,
+    *,
+    start_time: float,
+    end_time: float | None = None,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video trim command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if start_time < 0:
+        raise MediaKitInputError("裁剪开始时间不能为负数。")
+    if end_time is not None and end_time <= start_time:
+        raise MediaKitInputError("裁剪结束时间必须大于开始时间。")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "trim-video", "--video-url", video_path]
+    arguments.extend(["--start-time", str(start_time)])
+    if end_time is not None:
+        arguments.extend(["--end-time", str(end_time)])
+    return arguments
+
+
+def build_extract_audio_arguments(
+    video_path: str,
+    *,
+    output_format: str = "m4a",
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build an audio-extraction command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if output_format not in {"mp3", "m4a", "ogg", "flac", "wav"}:
+        raise MediaKitInputError(f"不支持的输出音频格式：{output_format}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "extract-audio", "--video-url", video_path]
+    if output_format != "m4a":
+        arguments.extend(["--format", output_format])
+    return arguments

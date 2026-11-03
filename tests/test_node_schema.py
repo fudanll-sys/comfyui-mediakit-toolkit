@@ -45,7 +45,7 @@ def _fake_comfy_modules():
         Schema=_Schema,
         NodeOutput=_NodeOutput,
     )
-    for name in ("Video", "Boolean", "Combo", "Float", "Int", "String"):
+    for name in ("Video", "Audio", "Image", "Boolean", "Combo", "Float", "Int", "String"):
         setattr(io, name, types.SimpleNamespace(Input=_Input, Output=_Output))
 
     comfy_api = types.ModuleType("comfy_api")
@@ -95,7 +95,36 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
                 "MediaKitVideoSegmentScenes",
                 "MediaKitVideoAnalyzeHighlights",
                 "MediaKitVideoProbeMetadata",
+                "MediaKitTrimVideo",
+                "MediaKitExtractAudio",
             ],
+        )
+
+    def test_editing_nodes_register_with_bilingual_names(self):
+        expected = {
+            "MediaKitTrimVideo": "Trim · 视频裁剪",
+            "MediaKitExtractAudio": "Extract Audio · 提取音频",
+        }
+        for node in (self.extension.MediaKitTrimVideo, self.extension.MediaKitExtractAudio):
+            schema = node.define_schema()
+            self.assertEqual(schema.display_name, expected[schema.node_id])
+            self.assertEqual(schema.category, "MediaKit/Video Editing")
+            self.assertEqual(schema.inputs[0].id, "video")
+
+    def test_editing_nodes_use_auto_run_mode_by_default(self):
+        for node in (self.extension.MediaKitTrimVideo, self.extension.MediaKitExtractAudio):
+            schema = node.define_schema()
+            run_mode_input = next(item for item in schema.inputs if item.id == "run_mode")
+            self.assertEqual(run_mode_input.kwargs["default"], "auto")
+
+    def test_extract_audio_outputs_native_audio(self):
+        schema = self.extension.MediaKitExtractAudio.define_schema()
+        self.assertIsInstance(schema.outputs[0], _Output)
+
+    def test_probe_metadata_exposes_run_mode(self):
+        schema = self.extension.MediaKitVideoProbeMetadata.define_schema()
+        self.assertIn(
+            "run_mode", [item.id for item in schema.inputs]
         )
 
     def test_video_ai_nodes_use_short_bilingual_display_names(self):

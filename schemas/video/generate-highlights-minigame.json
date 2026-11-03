@@ -1,0 +1,7 @@
+{
+  "domain": "video",
+  "tool": "generate-highlights-minigame",
+  "modes": [
+    "Cloud"
+  ]
+}
