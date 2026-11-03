@@ -456,7 +456,7 @@ def supported_modes(domain: str, tool: str) -> set[str]:
     """
     try:
         result = run_cli([domain, tool, "--help"], timeout=60, expect_json=False)
-    except MediaKitCommandError:
+    except (MediaKitCommandError, MediaKitDependencyError):
         return set()
     text = result.stdout or result.stderr
     modes: set[str] = set()

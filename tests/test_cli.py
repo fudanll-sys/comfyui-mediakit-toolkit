@@ -23,6 +23,7 @@ from mediakit_toolkit.cli import (
 from mediakit_toolkit.errors import (
     MediaKitCommandError,
     MediaKitConfigurationError,
+    MediaKitDependencyError,
     MediaKitInputError,
     MediaKitTaskError,
 )
@@ -231,6 +232,13 @@ class EditingCommandBuilderTests(unittest.TestCase):
 
     def test_supported_modes_empty_on_cli_failure(self):
         with patch("mediakit_toolkit.cli.run_cli", side_effect=MediaKitCommandError("x")):
+            self.assertEqual(supported_modes("editing", "trim-video"), set())
+
+    def test_supported_modes_empty_when_cli_missing(self):
+        # CI runners and fresh installs may not have mediakit-cli yet; mode
+        # probing must degrade to an empty set instead of crashing, so callers
+        # fall back to cloud execution.
+        with patch("mediakit_toolkit.cli.run_cli", side_effect=MediaKitDependencyError("missing")):
             self.assertEqual(supported_modes("editing", "trim-video"), set())
 
 
