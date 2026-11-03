@@ -15,7 +15,7 @@ inside each node.
 
 ## Status
 
-Version `0.3.0` currently provides:
+Version `0.4.0` currently provides:
 
 | Node | Description |
 | --- | --- |

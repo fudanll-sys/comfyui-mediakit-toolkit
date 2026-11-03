@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-11-03
 
 - Add `Trim · 视频裁剪` and `Extract Audio · 提取音频` editing nodes with
   native `VIDEO → VIDEO` / `VIDEO → AUDIO` interfaces.
