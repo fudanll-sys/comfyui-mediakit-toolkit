@@ -3,5 +3,149 @@
   "tool": "remove-image-background",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "自动识别并保留通用物体、人像或商品主体，移除背景；PNG、WebP 可输出透明背景，JPEG 的透明区域会填充为黑色。人像和商品场景还可生成主体描边或裁去多余透明区域。",
+    "input_schema": {
+      "description": "提交一张公网可访问图片 URL，并指定背景移除场景；general 适合未知主体，human/product 支持描边和透明背景裁剪。 可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "contour_color": {
+          "default": "#FFFFFF",
+          "description": "主体描边颜色，使用十六进制 RGB，默认 #FFFFFF；仅当 need_contour 为 true 且 scene 为 human 或 product 时生效。",
+          "pattern": "^#[0-9a-fA-F]{6}$",
+          "type": "string"
+        },
+        "contour_size": {
+          "default": 10,
+          "description": "主体描边宽度，单位 px，范围 1 至 100，默认 10；仅当 need_contour 为 true 且 scene 为 human 或 product 时生效。",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "待处理的图像 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；仅支持 .png、.jpg、.jpeg、.webp、.tiff、.bmp和.heic 格式；单张图片不得超过 10 MB，图像输入分辨率的长边不得超过 7680 px、短边不得超过 4320 px。",
+          "format": "media-to-url",
+          "type": "string",
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp",
+              "tiff",
+              "bmp",
+              "heic"
+            ],
+            "max_bytes": 10485760,
+            "max_long_edge": 7680,
+            "max_short_edge": 4320
+          }
+        },
+        "need_contour": {
+          "default": false,
+          "description": "是否为主体生成描边，默认 false；仅在 scene 为 human 或 product 时生效，在 general 场景下会被忽略。",
+          "type": "boolean"
+        },
+        "need_crop_background": {
+          "default": false,
+          "description": "是否将输出图片的透明背景裁剪到刚好包裹住主体，默认 false；仅在 scene 为 human 或 product 时生效，在 general 场景下会被忽略。",
+          "type": "boolean"
+        },
+        "output_format": {
+          "default": "png",
+          "description": "输出图片格式可用 png、jpeg、webp，默认 png；png 支持透明背景，webp 支持透明背景，jpeg 不支持透明背景，jpeg 的透明区域将填充为黑色。",
+          "enum": [
+            "png",
+            "jpeg",
+            "webp"
+          ],
+          "type": "string"
+        },
+        "scene": {
+          "description": "背景移除场景可用 general、human、product；general 为通用场景，适用于期望抠出图像主体但不确定该主体所属分类的场景；human 为人像抠图场景，适用于仅需抠出图像中的人像主体的场景；product 为商品抠图场景，适用于仅需抠出图像中的商品主体的场景。",
+          "enum": [
+            "general",
+            "human",
+            "product"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url",
+        "scene"
+      ],
+      "type": "object"
+    },
+    "name": "remove_image_background",
+    "output_schema": {
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "image_format": {
+          "description": "生成图像的格式。",
+          "type": "string"
+        },
+        "image_height": {
+          "description": "生成图像的高度，单位 px。",
+          "type": "integer"
+        },
+        "image_size": {
+          "description": "生成图像的大小，单位为字节。",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "背景移除后的图片下载 URL，有效期 24 小时。",
+          "format": "media-url",
+          "type": "string",
+          "x-source-type": "imagex_uri"
+        },
+        "image_width": {
+          "description": "生成图像的宽度，单位 px。",
+          "type": "integer"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

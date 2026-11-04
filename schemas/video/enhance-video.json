@@ -3,5 +3,161 @@
   "tool": "enhance-video",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "用于视频画质增强。利用 AI 算法对输入视频进行分析，并智能执行包括但不限于视频去噪、色彩增强、清晰度提升、瑕疵修复和超分辨率的一系列优化操作。提供 standard 和 professional 两种版本：standard 兼顾处理速度与视频画质，内置高频使用的 10 余种增强算法，适用于视频分发场景的画质增强；professional 提供极致画质增强，内置 30 余种深度 AI 增强算法，适用于影视级视频制作。不同版本会影响增强算法的强度、适用场景与计费。",
+    "input_schema": {
+      "allOf": [
+        {
+          "not": {
+            "required": [
+              "resolution",
+              "resolution_limit"
+            ]
+          }
+        }
+      ],
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "bit_depth": {
+          "default": 8,
+          "description": "目标色深（也称为位深），仅专业版（tool_version 为 professional）支持。取值如下：8：（默认值）8 bit 位深，每个颜色通道有 2⁸（即 256）个亮度等级。支持 h264、h265 编码。10：10 bit 位深，每个颜色通道有 2¹⁰（即 1024）个亮度等级。支持 h265、prores 编码。12：12 bit 位深，每个颜色通道有 2¹²（即 4096）个亮度等级。支持 h265 编码。16：16 bit 位深，每个颜色通道有 2¹⁶（即 65536）个亮度等级。支持 ffv1、exr 编码。注意：请确保输入视频时长不超过 40 秒。此档位下，码率由系统自动决定，bitrate、bitrate_level 参数均不生效。16 bit 色深任务为单任务串行处理，即只能单一任务处理完成后，再开始新任务处理，因此处理时间可能较长。",
+          "enum": [
+            8,
+            10,
+            12,
+            16
+          ],
+          "type": "integer"
+        },
+        "bitrate": {
+          "description": "目标平均码率，单位为 kbps，取值范围 [10, 150000]。不填时按 bitrate_level 结合分辨率与帧率自动换算。当同时指定 bitrate 与 bitrate_level 时，仅 bitrate 生效。",
+          "maximum": 150000,
+          "minimum": 10,
+          "type": "integer"
+        },
+        "bitrate_level": {
+          "default": "medium",
+          "description": "用于控制输出视频的平均码率，会影响视频的视觉质量和最终的文件体积。可选 low、medium、high；其中 high 表示高码率，medium 表示中码率，推荐使用，low 表示低码率；默认 medium。",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "type": "string",
+          "x-description-en": "Controls the average bitrate of the output video, affecting visual quality and final file size. This parameter is optional and defaults to medium. It can be set to low, medium, or high, where low selects a low bitrate, medium selects the recommended medium bitrate, and high selects a high bitrate. The actual bitrate is automatically calculated from the target resolution and frame rate. The documented low, medium, and high target output bitrates in Mbps are defined by output resolution and frame-rate bands from 15 through 120 fps. The actual output bitrate is typically 0.8 to 1.5 times the listed target because the system dynamically adjusts for content complexity."
+        },
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "codec": {
+          "description": "视频编码格式，仅专业版（tool_version 为 professional）支持。指定 codec 时必须同时指定 bit_depth，且两者需为合法组合，若未指定 codec，系统将按 bit_depth 自动选择相应编码：8 的默认编码为 h264；10 和 12 的默认编码为 h265；16 的默认编码为 ffv1。支持的编码格式如下：h264；h265；prores；ffv1；exr 注意：prores、ffv1、exr 编码不支持指定码率，此时 bitrate、bitrate_level 参数均不生效。",
+          "enum": [
+            "h264",
+            "h265",
+            "prores",
+            "ffv1",
+            "exr"
+          ],
+          "type": "string"
+        },
+        "enhance_style": {
+          "default": "hd",
+          "description": "画质增强风格。标准版（tool_version 为 standard）与专业版（tool_version 为 professional）均支持。可选值：hd：（默认）高清。增强强度适中，画面锐利清晰。natural：自然。降低画质增强强度，锐化痕迹更少，画面观感更自然。",
+          "enum": [
+            "hd",
+            "natural"
+          ],
+          "type": "string"
+        },
+        "fps": {
+          "description": "目标帧率，单位为 fps，取值范围为 15 到 120。若未指定 fps，输出视频将保持与原始片源一致的帧率。建议 fps 不超过原片的 4 倍。",
+          "maximum": 120,
+          "minimum": 15,
+          "type": "number",
+          "x-description-en": "Specifies the target frame rate, in frames per second. This parameter is optional; when it is not specified, the output preserves the source frame rate. The value ranges from a minimum of 15 to a maximum of 120, and we recommend that it not exceed 4 times the source frame rate."
+        },
+        "resolution": {
+          "description": "目标分辨率档位。您可以使用此参数将视频超分到指定规格。支持：240p；360p；480p；540p；720p；1080p；2k；4k；6k；8k 注意：此参数与 resolution_limit 互斥，不可同时配置。",
+          "enum": [
+            "240p",
+            "360p",
+            "480p",
+            "540p",
+            "720p",
+            "1080p",
+            "2k",
+            "4k",
+            "6k",
+            "8k"
+          ],
+          "type": "string"
+        },
+        "resolution_limit": {
+          "description": "目标分辨率的短边像素限制，取值范围为 128 到 4320。系统将根据 resolution_limit 在保持原视频宽高比的前提下等比缩放到该限制值。resolution_limit 与 resolution 不可同时配置。",
+          "maximum": 4320,
+          "minimum": 128,
+          "type": "integer",
+          "x-description-en": "Sets the short-side pixel limit for the target resolution. The system scales the video proportionally to this limit while preserving the original aspect ratio. This parameter is optional, with values ranging from a minimum of 128 to a maximum of 4320. It cannot be configured together with resolution, as the two are mutually exclusive."
+        },
+        "scene": {
+          "default": "common",
+          "description": "用于选择一个针对特定业务场景的预设画质增强模板。scene 仅在 tool_version 为 standard 时生效，可选 common、ugc、short_series、aigc、old_film，默认 common。其中 common 表示通用模板，ugc 表示 UGC 短视频场景，short_series 表示短剧场景，aigc 表示 AIGC 内容场景，old_film 表示老片修复场景。",
+          "enum": [
+            "common",
+            "ugc",
+            "short_series",
+            "aigc",
+            "old_film"
+          ],
+          "type": "string",
+          "x-description-en": "Selects a preset enhancement template for a specific business scenario. This parameter is optional and defaults to common. It supports common for general-purpose content, ugc for UGC short video, short_series for short-form drama series, aigc for AI-generated content, and old_film for old film restoration. This setting takes effect only when tool_version is standard."
+        },
+        "tool_version": {
+          "default": "standard",
+          "description": "影响增强算法的强度、适用场景与计费。可选 standard 和 professional，默认 standard。其中 standard 表示标准版，兼顾处理速度与视频画质，内置高频使用的 10 余种增强算法，覆盖主流播放平台画质要求，适用于视频分发场景的画质增强；professional 表示专业版，提供极致画质增强，保障镜头级画质效果，内置 30 余种深度 AI 增强算法，适用于影视级视频制作。",
+          "enum": [
+            "standard",
+            "professional"
+          ],
+          "type": "string",
+          "x-description-en": "Optional. It determines the enhancement algorithms' strength and scope and the billing. It defaults to standard and can be set to standard or professional. The standard version balances processing speed and video quality, includes over 10 frequently used enhancement algorithms, meets mainstream playback platform quality requirements, and suits video distribution quality improvement. The professional version provides ultimate quality enhancement with over 30 built-in algorithms, ensures shot-level visual effects, and suits cinema-grade video production."
+        },
+        "video_url": {
+          "description": "待增强的视频 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议。支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式。建议单个输入文件大小不超过 10 GB。输入视频分辨率最高支持 2K，长边范围为 360 到 2560，短边范围为 360 到 1440。",
+          "format": "media-to-vid",
+          "type": "string",
+          "x-description-en": "The URL of the video to be enhanced. This parameter is required. It supports only publicly accessible HTTP/HTTPS URLs. Supported input video formats include mp4, flv, ts, avi, mov, wmv, and mkv. Input video resolution supports up to 2K. It is recommended that a single input file not exceed 10 GB."
+        }
+      },
+      "required": [
+        "video_url"
+      ],
+      "type": "object"
+    },
+    "name": "enhance_video",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

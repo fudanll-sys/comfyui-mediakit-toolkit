@@ -33,7 +33,7 @@ import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -52,6 +52,7 @@ class ToolSnapshot:
     tool: str
     fingerprint: str
     modes: tuple[str, ...] = ()
+    schema: dict = field(default_factory=dict)
 
 
 def run_cli(cli: str, arguments: list[str], timeout: int = 60) -> subprocess.CompletedProcess:
@@ -119,25 +120,29 @@ def collect_snapshots(
 
     Returns (cli_version, {domain: [ToolSnapshot, ...]}).
     """
-    domains = parse_domains(run_cli(cli, ["--domains"]).stdout)
+    domains_result = run_cli(cli, ["--domains"])
+    if getattr(domains_result, "returncode", 0) != 0:
+        raise RuntimeError("无法读取 CLI 域列表。")
+    domains = parse_domains(domains_result.stdout)
+    if not domains:
+        raise RuntimeError("CLI 域列表为空或无法解析；未写入快照。")
     by_domain: dict[str, list[ToolSnapshot]] = {}
     for domain, _description in domains:
-        tools = parse_tools(run_cli(cli, [domain, "--help"]).stdout)
+        tools_result = run_cli(cli, [domain, "--help"])
+        tools = parse_tools(tools_result.stdout)
+        if getattr(tools_result, "returncode", 0) != 0 or not tools:
+            raise RuntimeError(f"{domain}: 无法读取工具列表。")
         snapshots: list[ToolSnapshot] = []
         for tool in tools:
             schema_result = run_cli(cli, [domain, tool, "--schema"], timeout=120)
             if schema_result.returncode != 0:
-                print(
-                    f"  [warn] {domain}/{tool}: --schema failed "
-                    f"(exit {schema_result.returncode}); skipping.",
-                    file=sys.stderr,
-                )
-                continue
+                raise RuntimeError(f"{domain}/{tool}: --schema failed (exit {schema_result.returncode}); 未写入不完整快照。")
             try:
                 schema = json.loads(schema_result.stdout)
-            except json.JSONDecodeError:
-                print(f"  [warn] {domain}/{tool}: --schema output is not JSON; skipping.", file=sys.stderr)
-                continue
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(f"{domain}/{tool}: --schema 返回无效 JSON。") from exc
+            if not isinstance(schema, dict) or not isinstance(schema.get("input_schema"), dict):
+                raise RuntimeError(f"{domain}/{tool}: 缺少 input_schema。")
             modes = parse_modes(run_cli(cli, [domain, tool, "--help"]).stdout)
             snapshots.append(
                 ToolSnapshot(
@@ -145,6 +150,7 @@ def collect_snapshots(
                     tool=tool,
                     fingerprint=fingerprint(schema),
                     modes=modes,
+                    schema=schema,
                 )
             )
         by_domain[domain] = snapshots
@@ -167,6 +173,7 @@ def write_snapshots(
                         "domain": domain,
                         "tool": snapshot.tool,
                         "modes": list(snapshot.modes),
+                        "schema": getattr(snapshot, "schema", {}),
                     },
                     ensure_ascii=False,
                     indent=2,
@@ -271,6 +278,16 @@ def validate_snapshot_tree(schemas_dir: Path) -> list[str]:
             snapshot_path = schemas_dir / domain / f"{entry['tool']}.json"
             if not snapshot_path.is_file():
                 errors.append(f"缺少快照文件：{snapshot_path.relative_to(schemas_dir)}")
+                continue
+            try:
+                saved = json.loads(snapshot_path.read_text(encoding="utf-8"))
+                schema = saved.get("schema")
+                if not isinstance(schema, dict) or not isinstance(schema.get("input_schema"), dict):
+                    errors.append(f"缺少完整参数合同：{domain}/{entry['tool']}")
+                elif fingerprint(schema) != entry.get("fingerprint"):
+                    errors.append(f"指纹不匹配：{domain}/{entry['tool']}")
+            except (OSError, json.JSONDecodeError, AttributeError) as exc:
+                errors.append(f"无效快照：{domain}/{entry['tool']} ({exc})")
     return errors
 
 

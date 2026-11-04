@@ -3,5 +3,89 @@
   "tool": "generate-highlights-minigame",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "支持识别小游戏录屏视频中的核心玩法与高光事件，例如连击、通关、极限操作，并快速生成用于买量推广的视频素材。可选提供游戏名称、玩法描述和高光定义，辅助更精准地识别精彩内容。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "enable_generate_video": {
+          "default": true,
+          "description": "控制是否生成高光混剪视频，默认 true。true 时生成并输出高光混剪视频；false 时不生成高光混剪视频。",
+          "type": "boolean"
+        },
+        "minigame_info": {
+          "description": "可选的小游戏描述信息，建议填写以辅助模型更精准地识别高光内容。",
+          "properties": {
+            "highlight_definition": {
+              "description": "游戏高光时刻或精彩瞬间定义，例如一次消除多个方块或躲避所有障碍物通关。",
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "name": {
+              "description": "游戏名称，用于标识游戏内容。",
+              "maxLength": 5000,
+              "type": "string"
+            },
+            "play_definition": {
+              "description": "游戏玩法规则或核心特点描述。",
+              "maxLength": 5000,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "mode": {
+          "default": "HighlightExtract",
+          "description": "高光提取模式，当前版本固定为 HighlightExtract。",
+          "enum": [
+            "HighlightExtract"
+          ],
+          "type": "string"
+        },
+        "video_urls": {
+          "description": "待处理小游戏视频 URL 列表。单次任务仅支持输入 1 个视频文件；支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式；输入文件时长不得超过 10 分钟；输入分辨率最高支持 1080p。",
+          "items": {
+            "description": "支持、公网 HTTP/HTTPS URL 输入协议；支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式；输入文件的时长不得超过 10 分钟；输入分辨率最高支持 1080p。",
+            "format": "media-to-vid",
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "video_urls"
+      ],
+      "type": "object"
+    },
+    "name": "generate_highlights_minigame",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

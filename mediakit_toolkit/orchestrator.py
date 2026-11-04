@@ -3,19 +3,37 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping, Sequence
 
 from .cli import (
+    build_add_subtitle_arguments,
+    build_adjust_audio_speed_arguments,
+    build_adjust_video_speed_arguments,
+    build_adjust_video_volume_arguments,
     build_analyze_highlights_arguments,
+    build_apply_camera_motion_arguments,
+    build_apply_video_filter_arguments,
     build_asr_subtitles_arguments,
+    build_concat_audio_arguments,
+    build_concat_video_arguments,
+    build_crop_video_arguments,
     build_enhance_arguments,
     build_erase_subtitle_arguments,
+    build_extract_animated_image_arguments,
     build_extract_audio_arguments,
+    build_fade_audio_arguments,
+    build_fade_video_audio_arguments,
+    build_flip_video_arguments,
     build_generative_enhance_arguments,
     build_matte_video_arguments,
+    build_mix_audio_arguments,
+    build_mux_audio_video_arguments,
     build_probe_metadata_arguments,
     build_query_arguments,
+    build_rotate_video_arguments,
     build_segment_scenes_arguments,
+    build_stitch_video_arguments,
+    build_trim_audio_arguments,
     build_trim_video_arguments,
     build_video_ocr_arguments,
     run_cli_async,
@@ -43,11 +61,7 @@ def resolve_run_mode(domain: str, tool: str, requested: str) -> str:
 
 def _local_result_path(payload: dict[str, Any]) -> Path:
     """Extract the output path of a synchronous local-mode CLI result."""
-    value = payload.get("video_url")
-    if not value and isinstance(payload.get("result"), dict):
-        value = payload["result"].get("video_url")
-    if not isinstance(value, str) or not value:
-        raise MediaKitTaskError("MediaKit 本地任务完成，但未返回输出路径。")
+    value = _result_media_url(payload, error="本地任务完成，但未返回输出路径。")
     return Path(value).expanduser().resolve()
 
 
@@ -58,13 +72,39 @@ def _task_id(payload: dict[str, Any]) -> str:
     return value
 
 
-def _result_video_url(payload: dict[str, Any]) -> str:
-    value = payload.get("video_url")
+#: Result URL keys a MediaKit task may return, in preference order.
+_MEDIA_URL_KEYS: tuple[str, ...] = ("video_url", "audio_url", "image_url", "url")
+
+
+def _result_media_url(
+    payload: dict[str, Any],
+    *,
+    error: str = "MediaKit 任务完成，但未返回媒体 URL。",
+) -> str:
+    """Return the first media URL in a task result payload.
+
+    MediaKit editing/understanding tasks may return ``video_url``,
+    ``audio_url``, or ``image_url`` depending on the capability; the CLI also
+    flattens ``result`` fields, so both shapes are supported.
+    """
+    value: Any = None
+    for key in _MEDIA_URL_KEYS:
+        if payload.get(key):
+            value = payload[key]
+            break
     if not value and isinstance(payload.get("result"), dict):
-        value = payload["result"].get("video_url")
+        for key in _MEDIA_URL_KEYS:
+            if payload["result"].get(key):
+                value = payload["result"][key]
+                break
     if not isinstance(value, str) or not value:
-        raise MediaKitTaskError("MediaKit 任务完成，但未返回 video_url。")
+        raise MediaKitTaskError(error)
     return value
+
+
+def _result_video_url(payload: dict[str, Any]) -> str:
+    """Return the primary media URL of a finished task (backward-compatible)."""
+    return _result_media_url(payload)
 
 
 async def enhance_video(
@@ -445,6 +485,616 @@ async def extract_audio(
             run_mode="cloud",
         ),
         capability="editing-extract-audio",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def adjust_video_speed(
+    video_path: Path,
+    *,
+    speed: float = 1.0,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Adjust video playback speed locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "adjust-video-speed", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-adjust-video-speed")
+        result = await run_cli_async(
+            build_adjust_video_speed_arguments(
+                str(video_path), speed=speed, run_mode="local"
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_adjust_video_speed_arguments(str(video_path), speed=speed),
+        capability="editing-adjust-video-speed",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def adjust_video_volume(
+    video_path: Path,
+    *,
+    volume: float = 1.0,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Adjust video volume locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "adjust-video-volume", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-adjust-video-volume")
+        result = await run_cli_async(
+            build_adjust_video_volume_arguments(
+                str(video_path), volume=volume, run_mode="local"
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_adjust_video_volume_arguments(str(video_path), volume=volume),
+        capability="editing-adjust-video-volume",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def apply_camera_motion(
+    video_path: Path,
+    *,
+    motion_style: str = "zoom",
+    start_time: float = 0.0,
+    end_time: float | None = None,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Apply a camera-motion effect locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "apply-camera-motion", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-apply-camera-motion")
+        result = await run_cli_async(
+            build_apply_camera_motion_arguments(
+                str(video_path),
+                motion_style=motion_style,
+                start_time=start_time,
+                end_time=end_time,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_apply_camera_motion_arguments(
+            str(video_path),
+            motion_style=motion_style,
+            start_time=start_time,
+            end_time=end_time,
+        ),
+        capability="editing-apply-camera-motion",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def apply_video_filter(
+    video_path: Path,
+    *,
+    filter_style: str = "spring",
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Apply a video filter locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "apply-video-filter", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-apply-video-filter")
+        result = await run_cli_async(
+            build_apply_video_filter_arguments(
+                str(video_path), filter_style=filter_style, run_mode="local"
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_apply_video_filter_arguments(str(video_path), filter_style=filter_style),
+        capability="editing-apply-video-filter",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def flip_video(
+    video_path: Path,
+    *,
+    is_flip_horizontal: bool = False,
+    is_flip_vertical: bool = False,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Flip a video locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "flip-video", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-flip-video")
+        result = await run_cli_async(
+            build_flip_video_arguments(
+                str(video_path),
+                is_flip_horizontal=is_flip_horizontal,
+                is_flip_vertical=is_flip_vertical,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_flip_video_arguments(
+            str(video_path),
+            is_flip_horizontal=is_flip_horizontal,
+            is_flip_vertical=is_flip_vertical,
+        ),
+        capability="editing-flip-video",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def rotate_video(
+    video_path: Path,
+    *,
+    rotate_direction: str,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Rotate a video locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "rotate-video", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-rotate-video")
+        result = await run_cli_async(
+            build_rotate_video_arguments(
+                str(video_path), rotate_direction=rotate_direction, run_mode="local"
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_rotate_video_arguments(str(video_path), rotate_direction=rotate_direction),
+        capability="editing-rotate-video",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def concat_videos(
+    video_paths: Sequence[Path],
+    *,
+    transitions: Sequence[str] | None = None,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Concat videos locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "concat-video", run_mode)
+    paths = [str(path) for path in video_paths]
+    if mode == "local":
+        log_event("local_task_started", capability="editing-concat-video")
+        result = await run_cli_async(
+            build_concat_video_arguments(
+                paths, transitions=transitions, run_mode="local"
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_concat_video_arguments(paths, transitions=transitions),
+        capability="editing-concat-video",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def concat_audios(
+    audio_paths: Sequence[Path],
+    *,
+    output_format: str = "m4a",
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Concat audio locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "concat-audio", run_mode)
+    paths = [str(path) for path in audio_paths]
+    if mode == "local":
+        log_event("local_task_started", capability="editing-concat-audio")
+        result = await run_cli_async(
+            build_concat_audio_arguments(
+                paths, output_format=output_format, run_mode="local"
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_concat_audio_arguments(paths, output_format=output_format),
+        capability="editing-concat-audio",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def mix_audios(
+    audio_paths: Sequence[Path],
+    *,
+    output_format: str = "m4a",
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Mix audio locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "mix-audio", run_mode)
+    paths = [str(path) for path in audio_paths]
+    if mode == "local":
+        log_event("local_task_started", capability="editing-mix-audio")
+        result = await run_cli_async(
+            build_mix_audio_arguments(
+                paths, output_format=output_format, run_mode="local"
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_mix_audio_arguments(paths, output_format=output_format),
+        capability="editing-mix-audio",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def mux_audio_video(
+    video_path: Path,
+    audio_path: Path,
+    *,
+    is_audio_reserve: bool = True,
+    is_video_audio_sync: bool = False,
+    sync_method: str = "trim",
+    sync_mode: str = "video",
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Mux audio and video locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "mux-audio-video", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-mux-audio-video")
+        result = await run_cli_async(
+            build_mux_audio_video_arguments(
+                str(video_path),
+                str(audio_path),
+                is_audio_reserve=is_audio_reserve,
+                is_video_audio_sync=is_video_audio_sync,
+                sync_method=sync_method,
+                sync_mode=sync_mode,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_mux_audio_video_arguments(
+            str(video_path),
+            str(audio_path),
+            is_audio_reserve=is_audio_reserve,
+            is_video_audio_sync=is_video_audio_sync,
+            sync_method=sync_method,
+            sync_mode=sync_mode,
+        ),
+        capability="editing-mux-audio-video",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def add_subtitle_to_video(
+    video_path: Path,
+    *,
+    subtitle_url: str | None = None,
+    subtitles: Sequence[Mapping[str, Any]] | None = None,
+    subtitle_font_type: str = "sy_black",
+    subtitle_pos_preset: str = "bottom_center",
+    subtitle_font_size: int = 50,
+    subtitle_font_color: str = "#FFFFFFFF",
+    subtitle_text_effect: str | None = None,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Burn subtitles locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "add-subtitle-to-video", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-add-subtitle-to-video")
+        result = await run_cli_async(
+            build_add_subtitle_arguments(
+                str(video_path),
+                subtitle_url=subtitle_url,
+                subtitles=subtitles,
+                subtitle_font_type=subtitle_font_type,
+                subtitle_pos_preset=subtitle_pos_preset,
+                subtitle_font_size=subtitle_font_size,
+                subtitle_font_color=subtitle_font_color,
+                subtitle_text_effect=subtitle_text_effect,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_add_subtitle_arguments(
+            str(video_path),
+            subtitle_url=subtitle_url,
+            subtitles=subtitles,
+            subtitle_font_type=subtitle_font_type,
+            subtitle_pos_preset=subtitle_pos_preset,
+            subtitle_font_size=subtitle_font_size,
+            subtitle_font_color=subtitle_font_color,
+            subtitle_text_effect=subtitle_text_effect,
+        ),
+        capability="editing-add-subtitle-to-video",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def stitch_videos(
+    video_paths: Sequence[Path],
+    *,
+    stitch_direction: str,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Stitch videos locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "stitch-video", run_mode)
+    paths = [str(path) for path in video_paths]
+    if mode == "local":
+        log_event("local_task_started", capability="editing-stitch-video")
+        result = await run_cli_async(
+            build_stitch_video_arguments(
+                paths, stitch_direction=stitch_direction, run_mode="local"
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_stitch_video_arguments(paths, stitch_direction=stitch_direction),
+        capability="editing-stitch-video",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def crop_video(
+    video_path: Path,
+    *,
+    top_left_x: int,
+    top_left_y: int,
+    bottom_right_x: int,
+    bottom_right_y: int,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Crop a video locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "crop-video", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-crop-video")
+        result = await run_cli_async(
+            build_crop_video_arguments(
+                str(video_path),
+                top_left_x=top_left_x,
+                top_left_y=top_left_y,
+                bottom_right_x=bottom_right_x,
+                bottom_right_y=bottom_right_y,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_crop_video_arguments(
+            str(video_path),
+            top_left_x=top_left_x,
+            top_left_y=top_left_y,
+            bottom_right_x=bottom_right_x,
+            bottom_right_y=bottom_right_y,
+        ),
+        capability="editing-crop-video",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def adjust_audio_speed(
+    audio_path: Path,
+    *,
+    speed: float = 1.0,
+    output_format: str = "m4a",
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Change audio speed locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "adjust-audio-speed", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-adjust-audio-speed")
+        result = await run_cli_async(
+            build_adjust_audio_speed_arguments(
+                str(audio_path),
+                speed=speed,
+                output_format=output_format,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_adjust_audio_speed_arguments(
+            str(audio_path), speed=speed, output_format=output_format
+        ),
+        capability="editing-adjust-audio-speed",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def trim_audio(
+    audio_path: Path,
+    *,
+    start_time: float = 0.0,
+    end_time: float | None = None,
+    output_format: str = "m4a",
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Trim audio locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "trim-audio", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-trim-audio")
+        result = await run_cli_async(
+            build_trim_audio_arguments(
+                str(audio_path),
+                start_time=start_time,
+                end_time=end_time,
+                output_format=output_format,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_trim_audio_arguments(
+            str(audio_path),
+            start_time=start_time,
+            end_time=end_time,
+            output_format=output_format,
+        ),
+        capability="editing-trim-audio",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def fade_audio(
+    audio_path: Path,
+    *,
+    fade_in_duration: float = 1.0,
+    fade_out_duration: float = 1.0,
+    output_format: str = "mp3",
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Fade audio in/out locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "fade-audio", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-fade-audio")
+        result = await run_cli_async(
+            build_fade_audio_arguments(
+                str(audio_path),
+                fade_in_duration=fade_in_duration,
+                fade_out_duration=fade_out_duration,
+                output_format=output_format,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_fade_audio_arguments(
+            str(audio_path),
+            fade_in_duration=fade_in_duration,
+            fade_out_duration=fade_out_duration,
+            output_format=output_format,
+        ),
+        capability="editing-fade-audio",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def fade_video_audio(
+    video_path: Path,
+    *,
+    fade_in_duration: float = 1.0,
+    fade_out_duration: float = 1.0,
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Fade a video's audio locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "fade-video-audio", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-fade-video-audio")
+        result = await run_cli_async(
+            build_fade_video_audio_arguments(
+                str(video_path),
+                fade_in_duration=fade_in_duration,
+                fade_out_duration=fade_out_duration,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_fade_video_audio_arguments(
+            str(video_path),
+            fade_in_duration=fade_in_duration,
+            fade_out_duration=fade_out_duration,
+        ),
+        capability="editing-fade-video-audio",
+        poll_interval_seconds=poll_interval_seconds,
+        max_poll_attempts=max_poll_attempts,
+    )
+
+
+async def extract_animated_image(
+    video_path: Path,
+    *,
+    start_time: float,
+    end_time: float,
+    output_format: str = "gif",
+    run_mode: str = "auto",
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+) -> tuple[str, str]:
+    """Extract an animated image locally when supported, otherwise via cloud."""
+    mode = resolve_run_mode("editing", "extract-animated-image", run_mode)
+    if mode == "local":
+        log_event("local_task_started", capability="editing-extract-animated-image")
+        result = await run_cli_async(
+            build_extract_animated_image_arguments(
+                str(video_path),
+                start_time=start_time,
+                end_time=end_time,
+                output_format=output_format,
+                run_mode="local",
+            ),
+            timeout=600,
+        )
+        return str(_local_result_path(result.payload)), ""
+    return await _run_cloud_video_task(
+        build_extract_animated_image_arguments(
+            str(video_path),
+            start_time=start_time,
+            end_time=end_time,
+            output_format=output_format,
+        ),
+        capability="editing-extract-animated-image",
         poll_interval_seconds=poll_interval_seconds,
         max_poll_attempts=max_poll_attempts,
     )

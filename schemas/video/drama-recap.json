@@ -3,5 +3,289 @@
   "tool": "drama-recap",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "基于已完成的剧本还原任务，可使用自定义解说词或由 AI 自动生成解说词，生成带 AI 配音与解说字幕的营销或解说视频；可配置音色、字幕样式与原文字幕擦除。",
+    "input_schema": {
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "erase_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "erase_subtitle": {
+                "const": true
+              }
+            },
+            "required": [
+              "erase_subtitle"
+            ]
+          }
+        }
+      ],
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "batch_count": {
+          "default": 1,
+          "description": "批量生成的解说视频数量，最大为 100，默认为 1，允许基于同一份输入一次性生成多个版本的解说视频。",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "drama_recap_config": {
+          "description": "解说词配置，用于控制解说词的生成方式、风格、语速等核心创作参数。",
+          "properties": {
+            "auto_generate_recap": {
+              "default": false,
+              "description": "是否由 AI 自动生成解说词；true 时根据视频内容自动创作解说文案，false 时使用用户提供的文案，默认 false。",
+              "type": "boolean"
+            },
+            "enable_repeat_match": {
+              "default": false,
+              "description": "是否允许解说词匹配重复的视频画面；true 为宽松匹配模式，允许视频片段被重复使用，可提升生成速度和成功率，但可能导致成片出现少量重复画面；false 为严格匹配模式，确保每个视频片段只被使用一次，成片重复度更低但耗时可能更长；默认 false。",
+              "type": "boolean"
+            },
+            "pause_time": {
+              "default": 120,
+              "description": "AI 配音的句间停顿时长，单位为毫秒，范围为 [1, 1000]，默认 120；可以控制解说配音的节奏感，数值较大时停顿更明显、节奏更舒缓，数值较小时节奏更紧凑。",
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "prefer_speed": {
+              "default": false,
+              "description": "是否优先保障生成速度；true 时使用更少的模型尝试次数，生成耗时更短；false 时生成结果整体更稳定，耗时较长；默认 false。",
+              "type": "boolean"
+            },
+            "style": {
+              "description": "AI 生成解说词的风格指令，仅在 auto_generate_recap 为 true 时生效。",
+              "maxLength": 500,
+              "type": "string"
+            },
+            "text_length": {
+              "description": "AI 生成解说词的期望长度（UTF-8 字符数），最大 5000；仅在 auto_generate_recap 为 true 时生效；为保证解说内容自然流畅，最终输出的文本长度可能不会严格等于期望长度，但会尽量趋近。",
+              "maximum": 5000,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "text_speed": {
+              "default": 1,
+              "description": "期望的解说词语速，范围为 [0.5, 2.0]，默认 1.0（标准语速）；数值越大语速越快，推荐 1.2 或 1.3 以获得更好的听感。",
+              "maximum": 2,
+              "minimum": 0.5,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "drama_script_task_id": {
+          "description": "已成功完成的剧本还原任务的 task_id，取自剧本还原任务终态结果中的 drama_script_task_id；传入后系统参考该任务的剧本还原结果生成解说视频。用户未提供时不得编造，须先完成剧本还原再填入。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "erase_mode": {
+          "default": "standard",
+          "description": "字幕擦除模式；仅当 erase_subtitle 为 true 时生效。默认 standard；standard 表示标准版字幕擦除，平衡擦除效果和处理效率，会残留轻微的涂抹痕迹。",
+          "enum": [
+            "standard"
+          ],
+          "type": "string"
+        },
+        "erase_subtitle": {
+          "default": false,
+          "description": "是否擦除原视频中的字幕；true 时移除原有字幕，false 时保留原有字幕，默认 false。",
+          "type": "boolean"
+        },
+        "miniseries_edit": {
+          "description": "仅竖屏的短剧三要素配置，使用预设视觉模板，为解说视频一键添加“短剧三要素”（剧名、角标、提示语）。",
+          "properties": {
+            "hint": {
+              "description": "短剧提示语，是画面左右两侧的一行文字；可以是概括视频核心冲突或亮点的引导性文字，也可以是“影视效果 请勿模仿 无不良价值观引导”的免责声明；不得超过 20 个字。",
+              "maxLength": 20,
+              "type": "string"
+            },
+            "template": {
+              "description": "“短剧三要素”视觉模板名称，不同模板决定剧名、角标、提示语的位置和样式；支持 热门短剧1、热门短剧2、热门短剧3、热门短剧4、热门短剧5。",
+              "enum": [
+                "热门短剧1",
+                "热门短剧2",
+                "热门短剧3",
+                "热门短剧4",
+                "热门短剧5"
+              ],
+              "type": "string"
+            },
+            "title": {
+              "description": "短剧名称，会在解说视频画面上展示剧名，用于品牌识别和引导用户搜索；不得超过 15 个字。",
+              "maxLength": 15,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "recap_text": {
+          "description": "用户自定义的解说词文本，最多 5000 字符；drama_recap_config.auto_generate_recap 为 true 时，不得传入 recap_text。",
+          "maxLength": 5000,
+          "type": "string"
+        },
+        "speaker_config": {
+          "description": "AI 配音配置。",
+          "properties": {
+            "voice_type": {
+              "default": "Yunxi",
+              "description": "配音的音色名称，默认 Yunxi；支持预置音色 Yunxi、Yunjian、Yunfeng、Yunyi、Yunjie、Yunze、Yunye、Xiaoxiao、Xiaochen、Xiaohan、Xiaomo。",
+              "enum": [
+                "Yunxi",
+                "Yunjian",
+                "Yunfeng",
+                "Yunyi",
+                "Yunjie",
+                "Yunze",
+                "Yunye",
+                "Xiaoxiao",
+                "Xiaochen",
+                "Xiaohan",
+                "Xiaomo"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "subtitle_config": {
+          "description": "解说字幕配置，用于自定义新生成的解说字幕的字体、位置、颜色等。",
+          "properties": {
+            "align_type": {
+              "default": 1,
+              "description": "文本对齐方式，默认 1（居中）；横排时 0 表示左对齐、1 表示居中、2 表示右对齐；竖排时 1 表示居中、3 表示上对齐、4 表示下对齐。",
+              "type": "integer"
+            },
+            "alpha": {
+              "default": 1,
+              "description": "字幕字体透明度，范围为 [0, 1]，默认 1。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "background_border_size": {
+              "default": 0,
+              "description": "字幕背景边框大小，默认 0。",
+              "minimum": 0,
+              "type": "number"
+            },
+            "background_color": {
+              "default": "#00000000",
+              "description": "字幕背景颜色，RGBA 格式，默认 \"#00000000\"（透明）。",
+              "type": "string"
+            },
+            "border_color": {
+              "default": "#00000000",
+              "description": "字幕描边颜色，RGBA 格式，默认 \"#00000000\"（透明）。",
+              "type": "string"
+            },
+            "border_width": {
+              "description": "字幕描边宽度，单位为 px。",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "bottom_right_x": {
+              "description": "字幕矩形区域右下角的 X 坐标，单位为像素（px），需大于 top_left_x。",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "bottom_right_y": {
+              "description": "字幕矩形区域右下角的 Y 坐标，单位为像素（px），需大于 top_left_y。",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "disable_subtitle": {
+              "default": false,
+              "description": "是否不在生成的解说视频中添加新的解说字幕；false 时添加新的解说字幕，默认 false。",
+              "type": "boolean"
+            },
+            "font_color": {
+              "default": "#FFFFFFFF",
+              "description": "字幕字体颜色，RGBA 格式，默认 \"#FFFFFFFF\"（白色）。",
+              "type": "string"
+            },
+            "font_size": {
+              "description": "字幕字体大小，单位为 px。",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "font_type": {
+              "default": "sy_black",
+              "description": "字幕字体，默认 sy_black；支持 sy_black、pm_zhengdao。",
+              "enum": [
+                "sy_black",
+                "pm_zhengdao"
+              ],
+              "type": "string"
+            },
+            "line_max_width": {
+              "default": 1,
+              "description": "自动换行宽度占字幕区域的比例，范围为 [0, 1]，默认 1。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "top_left_x": {
+              "description": "字幕矩形区域左上角的 X 坐标，单位为像素（px）。",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "top_left_y": {
+              "description": "字幕矩形区域左上角的 Y 坐标，单位为像素（px）。",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "typesetting": {
+              "default": 0,
+              "description": "文字排列方向，默认 0；0 表示横排，1 表示竖排。",
+              "enum": [
+                0,
+                1
+              ],
+              "type": "integer"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "drama_script_task_id"
+      ],
+      "type": "object"
+    },
+    "name": "drama_recap",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

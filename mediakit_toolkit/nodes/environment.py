@@ -41,8 +41,8 @@ class MediaKitEnvironmentCheck(io.ComfyNode):
                 io.Boolean.Input("run_doctor", default=True),
             ],
             outputs=[
-                io.String.Output(display_name="status"),
-                io.String.Output(display_name="details_json"),
+                io.String.Output(id="status"),
+                io.String.Output(id="details_json"),
             ],
         )
 

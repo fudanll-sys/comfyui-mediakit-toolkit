@@ -15,7 +15,7 @@ inside each node.
 
 ## Status
 
-Version `0.4.0` currently provides:
+Released version: `0.4.0`. The following list also includes unreleased P1 development nodes:
 
 | Node | Description |
 | --- | --- |
@@ -33,6 +33,24 @@ Version `0.4.0` currently provides:
 | `Metadata · 视频元信息` | Probes container, video-stream, and audio-stream metadata. |
 | `Trim · 视频裁剪` | Time-range video trimming with native `VIDEO → VIDEO`. |
 | `Extract Audio · 提取音频` | Separates the audio track with native `VIDEO → AUDIO`. |
+| `Speed · 视频变速` | Adjusts playback speed from 0.1× to 4.0×. |
+| `Volume · 音量调整` | Adjusts video volume or mutes the audio. |
+| `Camera Motion · 镜头运动` | Adds push, pull, pan, and rotate camera motion. |
+| `Filter · 视频滤镜` | Spring, sunset, vivid, fair-skin, and food presets. |
+| `Flip · 视频翻转` | Flips the video horizontally or vertically. |
+| `Rotate · 视频旋转` | Rotates 90° left / 90° right / 180°. |
+| `Concat · 视频拼接` | Concatenates multiple videos (with optional transitions). |
+| `Concat Audio · 音频拼接` | Concatenates multiple audio files. |
+| `Mix · 混音` | Mixes multiple audio tracks into one. |
+| `Mux · 音视频合流` | Muxes video and audio with keep/replace and A/V sync options. |
+| `Subtitle · 视频加字幕` | Burns subtitle files or inline text with custom styles. |
+| `Stitch · 视频拼合` | Stitches 2–3 videos side by side or stacked. |
+| `Crop · 画面裁剪` | Crops the video to a rectangular region. |
+| `Audio Speed · 音频变速` | Adjusts audio speed (0.1×–4.0×), native `AUDIO → AUDIO`. |
+| `Audio Trim · 音频裁剪` | Trims audio by time range, native `AUDIO → AUDIO`. |
+| `Fade Audio · 音频淡入淡出` | Fades audio in and out, native `AUDIO → AUDIO`. |
+| `Fade · 视频声音淡入淡出` | Fades the audio of a video in and out. |
+| `Animated · 提取动图` | Extracts a GIF/WebP animated image, native `VIDEO → IMAGE`. |
 
 `Enhance · 视频增强` is not the fast edition. A dedicated fast-enhancement
 capability has not been integrated yet and will use a separate node name when
@@ -40,8 +58,8 @@ it becomes available.
 
 ### Run modes
 
-`Trim · 视频裁剪`, `Extract Audio · 提取音频`, and `Metadata · 视频元信息` expose
-a `run_mode` parameter:
+All `MediaKit/Video Editing` nodes and `Metadata · 视频元信息` expose a
+`run_mode` parameter:
 
 - `auto` (default): detects whether the installed `mediakit-cli` supports local
   execution for the capability; local runs are synchronous and free, otherwise
@@ -51,6 +69,16 @@ a `run_mode` parameter:
 The plugin never forces local mode: older CLI builds may not implement
 `--local`, and forcing it would fail at runtime, so nodes only expose `auto`
 and `cloud`.
+
+### Native media and verification
+
+- Multi-media nodes use ComfyUI V3 Autogrow numbered slots.
+- AUDIO is a waveform `[1,C,T]` tensor and sample-rate dictionary. Single-batch mono/stereo inputs are serialized as PCM16 WAV, which can introduce quantization; outputs are AUDIO, never VIDEO fallback.
+- Animated IMAGE batches include all frames, with separate duration JSON and the original animation URL.
+- Run `python scripts/verify_comfy_contracts.py --comfy-root /path/to/ComfyUI` in a ComfyUI Python environment, plus the full unittest suite.
+- Native media tests explicitly skip when dependencies are absent. Three P1 imports and save-widget expansion passed in isolated ComfyUI 0.43.0 / frontend 1.57.6, with local diagnostic/save and expected input-error queue checks. Successful cloud editing chains remain unverified.
+- Reproduce frontend/queue checks with `scripts/verify_comfy_runtime.py` (see `--help`); Playwright and Chrome are test-only dependencies. Use an isolated localhost server. The script does not submit valid cloud tasks.
+- CLI 0.2.2 editing is cloud-only; `auto` fallback can incur cloud charges.
 
 ### Schema snapshots and version locking
 
@@ -295,6 +323,93 @@ Select your own authorized local video after importing one.
 - `output_format`: `mp3`, `m4a` (default), `ogg`, `flac`, or `wav`.
 - `run_mode`: `auto` (default, local-first) or `cloud`.
 - Output: native `AUDIO`.
+
+### Speed · 视频变速 / Audio Speed · 音频变速
+
+- `speed`: playback rate in `0.1–4.0`, default `1.0`.
+- Audio node output format: `mp3`, `m4a` (default), `ogg`, `flac`, or `wav`.
+
+### Volume · 音量调整
+
+- `volume`: multiplier `0–4`, default `1`; `0` mutes the audio.
+- Output: native `VIDEO`.
+
+### Camera Motion · 镜头运动
+
+- `motion_style`: `zoom`, `pan-zoom`, `orbit-360`, or `bounce`.
+- `start_time` / `end_time`: effect range in seconds; `end_time=0` means the end of the video.
+
+### Filter · 视频滤镜
+
+- `filter_style`: `spring`, `sunset`, `vivid`, `fair_skin`, or `food`.
+
+### Flip · 视频翻转
+
+- `is_flip_horizontal` / `is_flip_vertical`: horizontal / vertical mirror; enable at least one.
+
+### Rotate · 视频旋转
+
+- `rotate_direction`: `rotate_left_90`, `rotate_right_90`, or `rotate_180`.
+
+### Concat · 视频拼接
+
+- `videos`: 1–100 numbered Autogrow slots (`video_1`, `video_2`, etc.).
+- `transitions`: one transition resource ID applied to each boundary; empty means hard cuts.
+
+### Concat Audio · 音频拼接
+
+- `audios`: 1–100 numbered AUDIO Autogrow slots.
+- Output: native `AUDIO`.
+
+### Mix · 混音
+
+- `audios`: 1–100 numbered AUDIO Autogrow slots.
+- Output: native `AUDIO`.
+
+### Mux · 音视频合流
+
+- `audio`: the audio track to mux in.
+- `is_audio_reserve`: keep the original audio (default) or replace it.
+- `is_video_audio_sync`: enable A/V sync (`sync_method` and `sync_mode` optional).
+
+### Subtitle · 视频加字幕
+
+- `subtitle_url`: subtitle file path or URL (SRT/VTT/ASS).
+- `subtitles_json`: inline subtitle list JSON (`subtitle_text` / `start_time` / `end_time`).
+- `subtitle_font_type`: `sy_black` (default), `pm_zhengdao`, or `zhanku_kuaile`.
+- `subtitle_pos_preset`: `bottom_center` (default), `top_center`, `center`, `lower_third`.
+- `subtitle_font_size` / `subtitle_font_color` / `subtitle_text_effect`: size, color, and effects.
+
+### Stitch · 视频拼合
+
+- `videos`: list of videos to stitch (2–3).
+- `stitch_direction`: `horizontal` or `vertical`.
+
+### Crop · 画面裁剪
+
+- `top_left_x` / `top_left_y` / `bottom_right_x` / `bottom_right_y`: crop rectangle
+  in pixels; bottom-right must be greater than top-left and each side ≥ 16px.
+
+### Audio Trim · 音频裁剪
+
+- `start_time` / `end_time`: trim range in seconds.
+- Output: native `AUDIO`.
+
+### Fade Audio · 音频淡入淡出
+
+- `fade_in_duration` / `fade_out_duration`: seconds, default `1`.
+- Output format defaults to `mp3`; `mp3`, `m4a`, `ogg`, `flac`, or `wav`.
+
+### Fade · 视频声音淡入淡出
+
+- `fade_in_duration` / `fade_out_duration`: seconds, default `1`.
+
+### Animated · 提取动图
+
+- `start_time` / `end_time`: time range in seconds; end must exceed start.
+- `output_format`: `gif` (default) or `webp`.
+- Outputs: `image` (all frames), `frame_durations_ms` (per-frame milliseconds JSON), and `animated_url` (original GIF/WebP resource).
+- IMAGE batches do not encode animation timing; use the original URL for the encoded animation. Cloud URL expiry is determined by the service.
 
 ### Enhance · 视频增强
 

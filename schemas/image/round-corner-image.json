@@ -3,5 +3,140 @@
   "tool": "round-corner-image",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "为图片四角快速添加正圆或椭圆圆角，适用于头像、卡片等常见视觉编辑场景。",
+    "input_schema": {
+      "description": "提交待处理图片，并按圆角类型配置半径参数。corner_type=circle 时必须传 radius；corner_type=ellipse 时必须同时传 radius_x 和 radius_y。 可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "circle_radius": {
+          "default": 50,
+          "description": "正圆圆角半径，单位为 px，取值范围为 [0, 原图最小边/2]；超过该范围时按最大内切圆半径处理。",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "corner_type": {
+          "default": "circle",
+          "description": "圆角类型支持 circle 和 ellipse。circle 表示正圆圆角，半径通过 circle_radius 配置；ellipse 表示椭圆圆角，X 轴和 Y 轴半径分别通过 ellipse_radius_x 和 ellipse_radius_y 配置。默认 circle。",
+          "enum": [
+            "circle",
+            "ellipse"
+          ],
+          "type": "string"
+        },
+        "ellipse_radius_x": {
+          "default": 40,
+          "description": "椭圆圆角 X 轴（水平）半径，单位为 px，取值大于等于 0。",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ellipse_radius_y": {
+          "default": 60,
+          "description": "椭圆圆角 Y 轴（垂直）半径，单位为 px，取值大于等于 0。",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "待处理图片的 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；仅支持 .png、.jpg、.jpeg、.webp 格式，仅支持处理静图。建议单张图片不超过 35 MB，输入图片的宽和高均不得超过 10000 像素。",
+          "format": "media-to-binary",
+          "type": "string",
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp"
+            ],
+            "max_bytes": 36700160,
+            "max_edge": 10000
+          }
+        },
+        "output_format": {
+          "default": "webp",
+          "description": "输出图片格式支持 original、png、webp 和 jpeg，默认 webp。original 保持原图格式；png 和 webp 会对圆角外区域进行透明填充，jpeg 会对圆角外区域进行白色填充。",
+          "enum": [
+            "original",
+            "png",
+            "jpeg",
+            "webp"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object"
+    },
+    "name": "round_corner_image",
+    "output_schema": {
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "image_format": {
+          "description": "生成图像的格式",
+          "type": "string"
+        },
+        "image_height": {
+          "description": "生成图像的高度，单位为 px",
+          "type": "integer"
+        },
+        "image_size": {
+          "description": "生成图像的大小，单位为字节",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "处理后的图片文件下载地址，有效期为 24 小时，必须及时保存指向的产物。",
+          "format": "media-url",
+          "type": "string",
+          "x-source-type": "imagex_uri"
+        },
+        "image_width": {
+          "description": "生成图像的宽度，单位为 px",
+          "type": "integer"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

@@ -3,5 +3,212 @@
   "tool": "mosaic-image",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "支持对整张图像或指定矩形区域进行马赛克打码，可调整像素格形状与大小。支持用于遮挡人脸、证件信息、车牌、聊天记录等敏感内容。",
+    "input_schema": {
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mosaic_type": {
+                "const": "specify-region"
+              }
+            },
+            "required": [
+              "mosaic_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "mosaic_regions"
+            ]
+          }
+        }
+      ],
+      "description": "输入一张图片并配置打码方式。默认执行全图打码：mosaic_type=full-image、mosaic_step_x=12、mosaic_step_y=12、output_format=original。指定区域打码时设置 mosaic_type=specify-region，并传入 1-3 组 mosaic_regions 坐标。 可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "image_url": {
+          "description": "仅支持处理静图；建议单张图片不超过 35 MB；输入图像的宽和高均不得超过 10000 像素。仅支持 .png、.jpg、.jpeg、.webp 格式。支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议。",
+          "format": "media-to-binary",
+          "type": "string",
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp"
+            ],
+            "max_bytes": 36700160,
+            "max_edge": 10000
+          }
+        },
+        "mosaic_regions": {
+          "description": "最多支持 3 个矩形区域。",
+          "items": {
+            "properties": {
+              "bottom_right_x": {
+                "description": "框选区域右下角的 X 轴坐标，单位为 px，坐标原点为图像左上角，必须大于 top_left_x。",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "bottom_right_y": {
+                "description": "框选区域右下角的 Y 轴坐标，单位为 px，坐标原点为图像左上角，必须大于 top_left_y。",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "top_left_x": {
+                "description": "框选区域左上角的横 X 轴坐标，单位为 px，坐标原点为图像左上角。",
+                "minimum": 0,
+                "type": "integer"
+              },
+              "top_left_y": {
+                "description": "框选区域左上角的 Y 轴坐标，单位为 px，坐标原点为图像左上角。",
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "top_left_x",
+              "top_left_y",
+              "bottom_right_x",
+              "bottom_right_y"
+            ],
+            "type": "object",
+            "x-field-relations": [
+              {
+                "left": "bottom_right_x",
+                "operator": "greater_than",
+                "right": "top_left_x"
+              },
+              {
+                "left": "bottom_right_y",
+                "operator": "greater_than",
+                "right": "top_left_y"
+              }
+            ]
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "type": "array"
+        },
+        "mosaic_shape": {
+          "default": "circle",
+          "description": "默认使用 circle。支持 circle 和 rectangle：circle 表示圆形/椭圆像素格，视觉更柔和；rectangle 表示矩形像素格，遮挡更规整。",
+          "enum": [
+            "circle",
+            "rectangle"
+          ],
+          "type": "string"
+        },
+        "mosaic_step_x": {
+          "default": 12,
+          "description": "控制打码像素格的宽度，单位为 px；数值越大，马赛克颗粒感越强。默认值为 12。",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "mosaic_step_y": {
+          "default": 12,
+          "description": "控制打码像素格的高度，单位为 px；数值越大，马赛克颗粒感越强。默认值为 12。",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "mosaic_type": {
+          "default": "full-image",
+          "description": "默认使用 full-image，对整张图片打码。支持 full-image 和 specify-region：full-image 对整张图片打码；specify-region 仅对 mosaic_regions 指定的区域打码。",
+          "enum": [
+            "full-image",
+            "specify-region"
+          ],
+          "type": "string"
+        },
+        "output_format": {
+          "default": "original",
+          "description": "支持 png、jpeg、webp，也支持并默认使用 original，保持与原图一致的格式。",
+          "enum": [
+            "original",
+            "png",
+            "jpeg",
+            "webp"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object"
+    },
+    "name": "mosaic_image",
+    "output_schema": {
+      "description": "打码结果图及常用 metadata。返回的下载 URL 有效期 24 小时。",
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "image_format": {
+          "description": "返回生成图像的格式。",
+          "type": "string"
+        },
+        "image_height": {
+          "description": "生成图像的高度，单位为 px。",
+          "type": "integer"
+        },
+        "image_size": {
+          "description": "生成图像的大小，单位为字节。",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "处理后的图片文件下载地址有效期为 24 小时，必须及时保存产物。",
+          "format": "media-url",
+          "type": "string",
+          "x-source-type": "imagex_uri"
+        },
+        "image_width": {
+          "description": "生成图像的宽度，单位为 px。",
+          "type": "integer"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

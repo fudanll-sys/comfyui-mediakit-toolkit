@@ -123,7 +123,7 @@ class SnapshotTreeTests(unittest.TestCase):
             snapshot = type(
                 "Tool",
                 (),
-                {"domain": "video", "tool": "enhance-video", "fingerprint": "abc", "modes": ("Cloud",)},
+                {"domain": "video", "tool": "enhance-video", "fingerprint": fingerprint({"input_schema": {"type": "object"}}), "schema": {"input_schema": {"type": "object"}}, "modes": ("Cloud",)},
             )()
             write_snapshots(schemas_dir, "0.2.2", {"video": [snapshot]})
             self.assertTrue((schemas_dir / "manifest.json").is_file())
@@ -157,7 +157,7 @@ class CliInteractionTests(unittest.TestCase):
             run.return_value.stderr = ""
             self.assertEqual(cli_version("mediakit-cli"), "0.2.2")
 
-    def test_collect_snapshots_skips_failed_schema(self):
+    def test_collect_snapshots_rejects_failed_schema(self):
         with patch("sync_cli_schemas.run_cli") as run:
             run.side_effect = [
                 type("P", (), {"stdout": "video\t1\t视频处理。\n"})(),  # --domains
@@ -165,9 +165,8 @@ class CliInteractionTests(unittest.TestCase):
                 type("P", (), {"stdout": "", "returncode": 1, "stderr": "boom"})(),  # schema fails
                 type("P", (), {"stdout": "mediakit-cli 0.2.2\n", "stderr": ""})(),  # version
             ]
-            version, by_domain = collect_snapshots("mediakit-cli")
-            self.assertEqual(version, "0.2.2")
-            self.assertEqual(by_domain, {"video": []})
+            with self.assertRaisesRegex(RuntimeError, "schema failed"):
+                collect_snapshots("mediakit-cli")
 
 
 if __name__ == "__main__":

@@ -76,8 +76,8 @@ class MediaKitVideoASR(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.String.Output(display_name="subtitle"),
-                io.String.Output(display_name="raw_json"),
+                io.String.Output(id="subtitle"),
+                io.String.Output(id="raw_json"),
             ],
         )
 
@@ -139,8 +139,8 @@ class MediaKitVideoOCR(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.String.Output(display_name="subtitle"),
-                io.String.Output(display_name="raw_json"),
+                io.String.Output(id="subtitle"),
+                io.String.Output(id="raw_json"),
             ],
         )
 
@@ -195,7 +195,7 @@ class MediaKitVideoMattePortrait(io.ComfyNode):
                     advanced=True,
                 ),
             ],
-            outputs=[io.Video.Output(display_name="video")],
+            outputs=[io.Video.Output(id="video")],
         )
 
     @classmethod
@@ -248,7 +248,7 @@ class MediaKitVideoMatteGreenscreen(io.ComfyNode):
                     advanced=True,
                 ),
             ],
-            outputs=[io.Video.Output(display_name="video")],
+            outputs=[io.Video.Output(id="video")],
         )
 
     @classmethod
@@ -325,8 +325,8 @@ class MediaKitVideoSegmentScenes(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.String.Output(display_name="scenes_json"),
-                io.String.Output(display_name="raw_json"),
+                io.String.Output(id="scenes_json"),
+                io.String.Output(id="raw_json"),
             ],
         )
 
@@ -386,8 +386,8 @@ class MediaKitVideoAnalyzeHighlights(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.String.Output(display_name="highlights_json"),
-                io.String.Output(display_name="raw_json"),
+                io.String.Output(id="highlights_json"),
+                io.String.Output(id="raw_json"),
             ],
         )
 
@@ -443,8 +443,8 @@ class MediaKitVideoProbeMetadata(io.ComfyNode):
                 ),
             ],
             outputs=[
-                io.String.Output(display_name="metadata_json"),
-                io.String.Output(display_name="raw_json"),
+                io.String.Output(id="metadata_json"),
+                io.String.Output(id="raw_json"),
             ],
         )
 

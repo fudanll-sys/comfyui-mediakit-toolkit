@@ -3,5 +3,121 @@
   "tool": "gaussian-blur-image",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "用于图像高斯模糊；通过设定模糊强度快速对图片进行模糊处理，适用于隐私信息弱化、背景氛围化、生成预览图及封面背景等场景。",
+    "input_schema": {
+      "description": "输入一张图片并指定高斯模糊强度。blur_strength 范围为 1~100，数值越大越模糊，默认 10；推荐值为 10（轻度）、30（中度）、100（重度）。output_format 默认 original 表示保持原图格式。 可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "blur_strength": {
+          "default": 10,
+          "description": "高斯模糊强度，数值越大越模糊，范围 1 到 100，默认 10。推荐 10 为轻度模糊，推荐 30 为中度模糊，推荐 100 为重度模糊。",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "待处理图片 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；仅支持处理静图；支持 .png、.jpg、.jpeg、.webp 格式。输入图像的宽和高均不得超过 10000 像素，建议单张图片不超过 35 MB。",
+          "format": "media-to-binary",
+          "type": "string",
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp"
+            ],
+            "max_bytes": 36700160,
+            "max_edge": 10000
+          }
+        },
+        "output_format": {
+          "default": "original",
+          "description": "输出图片格式，original 表示保持与原图一致的格式；支持 original、png、jpeg、webp，默认 original。",
+          "enum": [
+            "original",
+            "png",
+            "jpeg",
+            "webp"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object"
+    },
+    "name": "gaussian_blur_image",
+    "output_schema": {
+      "description": "高斯模糊结果图及常用 metadata。返回的下载 URL 有效期 24 小时。",
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "image_format": {
+          "description": "生成图像的格式，例如 jpeg。",
+          "type": "string"
+        },
+        "image_height": {
+          "description": "生成图像的高度，单位为 px。",
+          "type": "integer"
+        },
+        "image_size": {
+          "description": "生成图像的大小，单位为字节。",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "处理后的图片文件下载地址，有效期为 24 小时，请务必及时保存产物。",
+          "format": "media-url",
+          "type": "string",
+          "x-source-type": "imagex_uri"
+        },
+        "image_width": {
+          "description": "生成图像的宽度，单位为 px。",
+          "type": "integer"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

@@ -3,5 +3,209 @@
   "tool": "enhance-image",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "基于图像内容理解进行智能决策，提升图片的分辨率、清晰度与色彩表现。",
+    "input_schema": {
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "tool_version": {
+                "const": "standard"
+              }
+            },
+            "required": [
+              "tool_version"
+            ]
+          },
+          "then": {
+            "properties": {
+              "multiple": {
+                "maximum": 8
+              },
+              "target_height": {
+                "maximum": 6144
+              },
+              "target_width": {
+                "maximum": 6144
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "tool_version": {
+                "const": "professional"
+              }
+            },
+            "required": [
+              "tool_version"
+            ]
+          },
+          "then": {
+            "properties": {
+              "multiple": {
+                "maximum": 30
+              },
+              "target_height": {
+                "maximum": 10240
+              },
+              "target_width": {
+                "maximum": 10240
+              }
+            }
+          }
+        }
+      ],
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "generative_enhance_mode": {
+          "default": "generative_first",
+          "description": "生成式增强策略，用于控制模型在“忠于原图”和“创造性修复”之间的平衡点。此参数仅在 tool_version 为 professional 时生效。支持取值如下：fidelity_first：保真度优先。此模式下，模型会更侧重于保留和增强图像的既有细节（如人物特征、原始纹理），尽可能减少对原始内容的改动。适用场景：当您需要高度还原细节时，如处理人像、产品图、文字截图等。generative_first：（默认）生成度优先。此模式下，模型会在保留原图结构的基础上智能生成更丰富、更自然的纹理细节，以达到最佳的主观视觉效果。适用场景：修复严重压缩或模糊的低质量图像，或当您希望获得最大程度的清晰度和细节感，并可以接受一定程度的细节再创作时。",
+          "enum": [
+            "generative_first",
+            "fidelity_first"
+          ],
+          "type": "string"
+        },
+        "image_url": {
+          "description": "image_url 是待增强图像的 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；单张输入图片不得超过 10 MB；输入和输出尺寸范围随 tool_version 而不同：standard 输入短边 16–1440 px、长边 16–2160 px，输出两边均不超过 6144 px；professional 输入短边至少 256 px、长边不超过 2048 px，输出长边不超过 10240 px；仅支持 .png、.jpg、.jpeg、.webp 格式。",
+          "format": "media-to-url",
+          "type": "string",
+          "x-input-conditional-limits": [
+            {
+              "max_long_edge": 2160,
+              "max_short_edge": 1440,
+              "min_long_edge": 16,
+              "min_short_edge": 16,
+              "when": {
+                "equals": "standard",
+                "param": "tool_version"
+              }
+            },
+            {
+              "max_long_edge": 2048,
+              "min_short_edge": 256,
+              "when": {
+                "equals": "professional",
+                "param": "tool_version"
+              }
+            }
+          ],
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp"
+            ],
+            "max_bytes": 10485760
+          }
+        },
+        "multiple": {
+          "description": "multiple 为非必选参数，表示图像处理后相对原图的放大倍数，支持 2 位小数；tool_version 为 standard 时，multiple 的范围是 [1, 8]；tool_version 为 professional 时，multiple 的范围是 [1, 30]；最终生成图像的宽度和高度不能超过所选模型版本支持的最大分辨率。 如果同时设置 multiple、target_width 和 target_height，优先使用 multiple；如果三者均未设置，默认按 2 倍放大。",
+          "maximum": 30,
+          "minimum": 1,
+          "type": "number"
+        },
+        "target_height": {
+          "description": "target_height 为非必选参数，表示处理后的目标高度，单位为 px；可选，通常与 target_width 配合使用，也可单独设置以保持原图宽高比；tool_version 为 standard 时，target_height 的范围是 [原图高度, 6144]，且最终放大倍数不能超过 8 倍；tool_version 为 professional 时，target_height 的范围是 [64, 10240]；只指定宽或高时，另一边按原图宽高比等比缩放；同时指定宽和高且比例不一致时，按完整容纳于目标尺寸框内的最大尺寸保持原图宽高比。",
+          "maximum": 10240,
+          "minimum": 64,
+          "type": "integer"
+        },
+        "target_width": {
+          "description": "target_width 为非必选参数，表示处理后的目标宽度，单位为 px；target_height 与 target_width 可选搭配使用，也可单独设置以保持原图宽高比；tool_version 为 standard 时，target_width 的范围是 [原图宽度, 6144]，且最终放大倍数不能超过 8 倍；tool_version 为 professional 时，target_width 的范围是 [64, 10240]；只指定宽或高时，另一边按原图宽高比等比缩放；同时指定宽和高且比例不一致时，按完整容纳于目标尺寸框内的最大尺寸保持原图宽高比；",
+          "maximum": 10240,
+          "minimum": 64,
+          "type": "integer"
+        },
+        "tool_version": {
+          "default": "standard",
+          "description": "tool_version 为非必选参数，用于选择画质增强模型版本，不同版本在效果、处理范围和价格上有所差异；默认是 standard；standard 是标准版，平衡处理速度与画质效果；professional 是专业版，提供发丝级画质增强，效果更佳；",
+          "enum": [
+            "standard",
+            "professional"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object"
+    },
+    "name": "enhance_image",
+    "output_schema": {
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "image_format": {
+          "description": "tool_version 为 standard 时，输出图像格式固定为 png；tool_version 为 professional 时，输出图像格式与输入图像格式保持一致。",
+          "type": "string"
+        },
+        "image_height": {
+          "description": "生成图像的高度，单位为 px。",
+          "type": "integer"
+        },
+        "image_size": {
+          "description": "生成图像的大小，单位为字节。",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "image_url 是增强后图片文件的下载地址，有效期为 24 小时，必须及时保存产物。",
+          "format": "media-url",
+          "type": "string",
+          "x-source-type": "imagex_uri"
+        },
+        "image_width": {
+          "description": "生成图像的宽度，单位为 px。",
+          "type": "integer"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

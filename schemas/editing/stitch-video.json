@@ -3,5 +3,81 @@
   "tool": "stitch-video",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "将 2 至 3 个视频在同一画布中按左右或上下方向进行空间拼接，适用于多视角对比和画面组合；输出时长以最长输入为准，较短视频结束后以黑屏补齐，并混合所有选择保留的音轨。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "stitch_direction": {
+          "description": "拼接方式：horizontal 表示左右拼接，vertical 表示上下拼接。",
+          "enum": [
+            "horizontal",
+            "vertical"
+          ],
+          "type": "string",
+          "x-description-en": "Required. Can be set to horizontal or vertical, where horizontal means side-by-side compositing and vertical means top-and-bottom compositing."
+        },
+        "videos": {
+          "description": "待拼接的视频对象列表，最少传入 2 个，最多传入 3 个；拼接画面的顺序与列表顺序一致。",
+          "items": {
+            "properties": {
+              "keep_audio": {
+                "default": true,
+                "description": "是否保留该视频的音频。默认值 true；为 false 时，该视频的音轨不会被合入最终产物。",
+                "type": "boolean",
+                "x-description-en": "Optional. Controls whether the video's audio is kept, and defaults to true. When set to false, that video's audio track is not mixed into the final output."
+              },
+              "video_url": {
+                "description": "待拼接的输入视频地址。支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式。输入视频最高支持 4K (3840×2160) 分辨率。建议输入文件大小不超过 10 GB。建议输入视频的宽高比为 16:9、9:16、1:1、4:3、3:4 等常见规格，以获得更好的拼接效果。",
+                "format": "media-to-vid",
+                "type": "string",
+                "x-description-en": "Required. The URL of an input video to stitch. Only publicly accessible HTTP or HTTPS URLs are supported. Supported common video formats include mp4, flv, ts, avi, mov, wmv, and mkv. Input resolution up to 4K (3840×2160) is supported. The input file size is recommended not to exceed 10 GB. For better stitching results, input videos are recommended to use common aspect ratios such as 16:9, 9:16, 1:1, 4:3, or 3:4."
+              }
+            },
+            "required": [
+              "video_url"
+            ],
+            "type": "object"
+          },
+          "maxItems": 3,
+          "minItems": 2,
+          "type": "array",
+          "x-description-en": "Required. Must contain at least 2 and at most 3 videos. The frame stitching order matches the order of the items."
+        }
+      },
+      "required": [
+        "videos",
+        "stitch_direction"
+      ],
+      "type": "object"
+    },
+    "name": "stitch_video",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

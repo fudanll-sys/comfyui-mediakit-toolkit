@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased
+
+- Cover the full MediaKit `editing` domain (20/20 tools) with 18 new native
+  ComfyUI nodes, all with mode-adaptive `run_mode` (`auto`/`cloud`) and the
+  existing multi-input architecture:
+  - Basic video editing: `Speed · 视频变速`, `Volume · 音量调整`,
+    `Camera Motion · 镜头运动`, `Filter · 视频滤镜`, `Flip · 视频翻转`,
+    `Rotate · 视频旋转`.
+  - Assembly: `Concat · 视频拼接` (with transitions), `Concat Audio · 音频拼接`,
+    `Mix · 混音`, `Mux · 音视频合流` (keep/replace audio, A/V sync).
+  - Subtitle / stitch / crop: `Subtitle · 视频加字幕` (file or inline JSON),
+    `Stitch · 视频拼合`, `Crop · 画面裁剪`.
+  - Audio and fades: `Audio Speed · 音频变速`, `Audio Trim · 音频裁剪`,
+    `Fade Audio · 音频淡入淡出`, `Fade · 视频声音淡入淡出`.
+  - Animated image: `Animated · 提取动图` (`VIDEO → IMAGE`, GIF/WebP).
+- Use real ComfyUI Autogrow inputs for multi-media nodes, native AUDIO dictionaries
+  and IMAGE tensors, and PyAV audio decoding (never VIDEO fallback).
+- Preserve animated image frames, per-frame duration JSON and original GIF/WebP URL.
+- Add real ComfyUI contract validation, media roundtrip tests and strict subtitle validation.
+- Add localhost-only real frontend import and queue verification via
+  `scripts/verify_comfy_runtime.py`; no valid cloud tasks are submitted.
+- Assign unique output ids and fix P1 workflow wiring and parameter documentation.
+- Fix result URL extraction so audio/image task results are recognized
+  (`video_url` / `audio_url` / `image_url`), fixing a latent failure of the
+  cloud path for audio capabilities.
+
 ## 0.4.0 - 2026-11-03
 
 - Add `Trim · 视频裁剪` and `Extract Audio · 提取音频` editing nodes with

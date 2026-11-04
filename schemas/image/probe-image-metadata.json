@@ -3,5 +3,272 @@
   "tool": "probe-image-metadata",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "支持查询 metadata、avghue、alpha、blurhash 四种图像信息。",
+    "input_schema": {
+      "description": "提交一张公网可访问图片 URL，并指定查询信息类型；未传 info_type 时默认返回 metadata。 可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "image_url": {
+          "description": "待探测的图片 URL。支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；仅支持 .png、.jpg、.jpeg、.webp 格式。图片输入分辨率的宽和高均不得超过 10000 像素，建议单张图片文件大小不超过 35 MB。",
+          "format": "media-to-imagex-uri",
+          "type": "string",
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp"
+            ],
+            "max_bytes": 36700160,
+            "max_edge": 10000
+          }
+        },
+        "info_type": {
+          "default": "metadata",
+          "description": "查询信息类型。metadata 获取图像的基本元信息；avghue 提取图像的主题色；alpha 分析图像的 Alpha 透明通道；blurhash 生成图像的 BlurHash 值。默认 metadata。",
+          "enum": [
+            "metadata",
+            "avghue",
+            "alpha",
+            "blurhash"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object"
+    },
+    "name": "probe_image_metadata",
+    "output_schema": {
+      "description": "根据 info_type 返回对应的图像探测结果。",
+      "oneOf": [
+        {
+          "properties": {
+            "aigc": {
+              "additionalProperties": true,
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "color_model": {
+              "type": "string"
+            },
+            "duration": {
+              "type": "number"
+            },
+            "exif": {
+              "additionalProperties": true,
+              "type": [
+                "object",
+                "null"
+              ]
+            },
+            "format": {
+              "type": "string"
+            },
+            "frame_count": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            },
+            "md5": {
+              "type": "string"
+            },
+            "orientation": {
+              "additionalProperties": true,
+              "items": true,
+              "type": [
+                "object",
+                "array",
+                "string",
+                "number",
+                "boolean",
+                "null"
+              ]
+            },
+            "quality": {
+              "type": "number"
+            },
+            "size": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "properties": {
+            "color": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "properties": {
+            "alpha_ratio": {
+              "type": "number"
+            },
+            "format": {
+              "type": "string"
+            },
+            "has_alpha": {
+              "type": "boolean"
+            },
+            "height": {
+              "type": "number"
+            },
+            "is_animation": {
+              "type": "boolean"
+            },
+            "width": {
+              "type": "number"
+            }
+          }
+        },
+        {
+          "properties": {
+            "blurhash": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "aigc": {
+          "additionalProperties": true,
+          "description": "AIGC 元数据。",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "alpha_ratio": {
+          "description": "Alpha 像素（完全透明或半透明）在整张图片中的占比。",
+          "type": "number"
+        },
+        "blurhash": {
+          "description": "BlurHash 编码字符串。",
+          "type": "string"
+        },
+        "color": {
+          "description": "十六进制格式的主题色，例如 #RRGGBB。",
+          "type": "string"
+        },
+        "color_model": {
+          "description": "色彩模型，例如 yuv420p。",
+          "type": "string"
+        },
+        "duration": {
+          "description": "动图时长，单位为秒；静态图此字段可能不存在。",
+          "type": "number"
+        },
+        "exif": {
+          "additionalProperties": true,
+          "description": "EXIF 元数据。",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "format": {
+          "description": "图片格式，例如 jpeg。",
+          "type": "string"
+        },
+        "frame_count": {
+          "description": "图片帧数，对于静态图通常为 1。",
+          "type": "number"
+        },
+        "has_alpha": {
+          "description": "是否包含 Alpha 透明通道。",
+          "type": "boolean"
+        },
+        "height": {
+          "description": "图片高度，单位为 px。",
+          "type": "number"
+        },
+        "is_animation": {
+          "description": "是否为动图。",
+          "type": "boolean"
+        },
+        "md5": {
+          "description": "图片的 MD5 值。",
+          "type": "string"
+        },
+        "orientation": {
+          "additionalProperties": true,
+          "description": "图片方向信息。",
+          "items": true,
+          "type": [
+            "object",
+            "array",
+            "string",
+            "number",
+            "boolean",
+            "null"
+          ]
+        },
+        "quality": {
+          "description": "压缩质量参数。",
+          "type": "number"
+        },
+        "size": {
+          "description": "图片大小，单位为 Byte。",
+          "type": "number"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        },
+        "width": {
+          "description": "图片宽度，单位为 px。",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

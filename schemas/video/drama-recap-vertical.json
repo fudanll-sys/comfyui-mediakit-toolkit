@@ -3,5 +3,289 @@
   "tool": "drama-recap-vertical",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "基于输入短剧剧集的角色与剧情故事线理解，自动提取高光片段并生成全新解说视频；支持文字解说（原片高光混剪 + 屏幕文字）与旁白解说（原片高光混剪 + AI 语音 + BGM），并可套用短剧三要素视觉模板。",
+    "input_schema": {
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "narrate_options"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "narrate"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "text_options"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "text"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          }
+        }
+      ],
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "edit_param": {
+          "description": "支持在 narrate 和 text 两种模式中使用；可选配置成片剪辑效果，包括套用包含剧名、角标和提示语的短剧三要素视觉模板。",
+          "properties": {
+            "mode": {
+              "default": "BasicEdit",
+              "description": "默认为 BasicEdit；支持 BasicEdit 和 TemplateEdit，BasicEdit 仅拼接高光片段，TemplateEdit 在基础剪辑上套用短剧三要素视觉模板。",
+              "enum": [
+                "BasicEdit",
+                "TemplateEdit"
+              ],
+              "type": "string"
+            },
+            "template_edit": {
+              "description": "仅当 edit_param.mode 为 TemplateEdit 时生效。",
+              "properties": {
+                "hint": {
+                  "description": "画面左右两侧的一行短剧提示语，可选用于概括核心冲突或亮点，也可用作免责声明；不得超过 20 个字。",
+                  "maxLength": 20,
+                  "type": "string"
+                },
+                "template": {
+                  "default": "热门短剧1",
+                  "description": "默认为 热门短剧1；决定剧名、角标和提示语的位置及样式；支持 热门短剧1、热门短剧2、热门短剧3、热门短剧4、热门短剧5。",
+                  "enum": [
+                    "热门短剧1",
+                    "热门短剧2",
+                    "热门短剧3",
+                    "热门短剧4",
+                    "热门短剧5"
+                  ],
+                  "type": "string"
+                },
+                "title": {
+                  "description": "展示在解说视频画面上的短剧名称，用于品牌识别和引导用户搜索；不得超过 22 个字。",
+                  "maxLength": 22,
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "mode"
+          ],
+          "type": "object"
+        },
+        "enable_return_poster": {
+          "default": false,
+          "description": "默认为 false；true 会在任务结果中返回 poster_url，false 不返回封面图。",
+          "type": "boolean"
+        },
+        "max_count": {
+          "default": 3,
+          "description": "单次任务期望生成的解说视频数量上限，最小值为 1，不得超过 100，默认为 3。",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "max_duration": {
+          "default": 180,
+          "description": "每个解说视频的时长上限，单位为秒，最小值为 1，最大值为 7200，默认为 180 秒。",
+          "maximum": 7200,
+          "minimum": 1,
+          "type": "number"
+        },
+        "min_duration": {
+          "default": 30,
+          "description": "每个解说视频的时长下限，单位为秒，最小值为 1，最大值为 7200，默认为 30 秒。",
+          "maximum": 7200,
+          "minimum": 1,
+          "type": "number"
+        },
+        "mode": {
+          "default": "text",
+          "description": "默认为 text；支持 narrate 和 text 两种模式。narrate 生成原片高光混剪、AI 语音解说和 BGM；text 生成原片高光混剪与屏幕文字解说。",
+          "enum": [
+            "narrate",
+            "text"
+          ],
+          "type": "string"
+        },
+        "narrate_bgm_url": {
+          "description": "指定旁白解说模式下使用的背景音乐音频 URL；支持本地文件路径和公网 HTTP/HTTPS URL；支持 mp3、m4a、wav 等主流音频格式；可选，不传时生成的解说视频不添加背景音乐。",
+          "format": "media-to-vid",
+          "type": "string"
+        },
+        "narrate_options": {
+          "description": "仅当 mode 为 narrate 时生效。",
+          "properties": {
+            "enable_narrate_bgm": {
+              "default": true,
+              "description": "默认为 true；true 启用 BGM 并使用 narrate_bgm_url 指定的音频，false 关闭背景音乐。",
+              "type": "boolean"
+            },
+            "erase_subtitle_mode": {
+              "default": "mosaic",
+              "description": "默认为 mosaic；支持 mosaic 和 standard。mosaic 直接高斯模糊遮盖字幕区域，处理效率最高，适合快速遮挡且画面完整性要求不高的场景；standard 平衡擦除效果与效率，对纯色或简单背景效果良好，但复杂纹理或剧烈运动背景可能残留轻微涂抹痕迹。",
+              "enum": [
+                "mosaic",
+                "standard"
+              ],
+              "type": "string"
+            },
+            "narrate_ratio": {
+              "default": 0.3,
+              "description": "控制旁白解说时长占生成视频时长的比例，最小值为 0，最大值为 1，默认为 0.3，建议不超过 0.5。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "opening_hook": {
+          "default": "auto",
+          "description": "精彩片段前置策略默认为 auto；支持 auto、force 和 disable。auto 会智能判断是否将最精彩片段前置到视频开头，force 强制开启精彩前置，disable 关闭精彩前置。",
+          "enum": [
+            "auto",
+            "force",
+            "disable"
+          ],
+          "type": "string"
+        },
+        "text_options": {
+          "description": "仅当 mode 为 text 时生效。",
+          "properties": {
+            "align_type": {
+              "default": "left",
+              "description": "默认为 left；支持 left、middle、right，分别表示左对齐、居中对齐和右对齐。",
+              "enum": [
+                "left",
+                "middle",
+                "right"
+              ],
+              "type": "string"
+            },
+            "border_color": {
+              "default": "#00000080",
+              "description": "花字描边颜色必须使用 #RRGGBBAA 格式，默认为 #00000080。",
+              "pattern": "^#[0-9A-Fa-f]{8}$",
+              "type": "string"
+            },
+            "border_width": {
+              "default": 2,
+              "description": "花字描边宽度单位为 px，默认为 2，建议不超过字号的 0.1 倍。",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "font_color": {
+              "default": "#FFFFF290",
+              "description": "花字颜色必须使用 #RRGGBBAA 格式，默认为 #FFFFF290。",
+              "pattern": "^#[0-9A-Fa-f]{8}$",
+              "type": "string"
+            },
+            "font_size": {
+              "description": "花字字号单位为 px；未传时按视频短边除以 24 自动计算，例如 720p 默认 30、1080p 默认 45；不得小于 1。",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "font_type": {
+              "default": "SY_Bold",
+              "description": "默认为 SY_Bold；支持 SY_Bold 和 SY_Black，分别表示思源粗体和思源黑体。",
+              "enum": [
+                "SY_Bold",
+                "SY_Black"
+              ],
+              "type": "string"
+            },
+            "inner_padding": {
+              "default": 1,
+              "description": "花字内边距单位为 px，默认为 1。",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "is_bold": {
+              "default": false,
+              "description": "花字是否加粗，默认为 false。",
+              "type": "boolean"
+            },
+            "is_italic": {
+              "default": true,
+              "description": "花字是否斜体，默认为 true。",
+              "type": "boolean"
+            },
+            "is_underline": {
+              "default": false,
+              "description": "花字是否添加下划线，默认为 false。",
+              "type": "boolean"
+            },
+            "shadow_color": {
+              "default": "#00000080",
+              "description": "花字阴影颜色必须使用 #RRGGBBAA 格式，默认为 #00000080。",
+              "pattern": "^#[0-9A-Fa-f]{8}$",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "video_urls": {
+          "description": "待处理短剧原片的视频源 URL 列表；支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式；单次任务支持传入 1 到 30 个视频文件；累计时长不得超过 120 分钟，即 2 小时；输入分辨率当前仅支持 1080p；输入素材需保持分辨率一致，否则会有兼容性问题；每个输入视频必须同时包含视频流和音频流；音频轨道必须包含清晰可识别的中文对话文本，仅含 BGM、纯音乐或语气词无法准确还原剧情；建议视频画面下半部分包含清晰居中的中文字幕，以提升文字解说定位和剧情理解准确度。",
+          "items": {
+            "description": "",
+            "format": "media-to-vid",
+            "type": "string"
+          },
+          "maxItems": 30,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "video_urls"
+      ],
+      "type": "object"
+    },
+    "name": "drama_recap_vertical",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

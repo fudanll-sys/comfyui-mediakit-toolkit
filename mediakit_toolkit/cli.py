@@ -508,3 +508,500 @@ def build_extract_audio_arguments(
     if output_format != "m4a":
         arguments.extend(["--format", output_format])
     return arguments
+
+
+def build_adjust_video_speed_arguments(
+    video_path: str,
+    *,
+    speed: float = 1.0,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-speed command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if not 0.1 <= speed <= 4.0:
+        raise MediaKitInputError("播放速度倍数需在 0.1～4.0 之间。")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "adjust-video-speed", "--video-url", video_path]
+    if speed != 1.0:
+        arguments.extend(["--speed", str(speed)])
+    return arguments
+
+
+def build_adjust_video_volume_arguments(
+    video_path: str,
+    *,
+    volume: float = 1.0,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-volume command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if not 0 <= volume <= 4:
+        raise MediaKitInputError("音量调整倍数需在 0～4 之间。")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "adjust-video-volume", "--video-url", video_path]
+    if volume != 1.0:
+        arguments.extend(["--volume", str(volume)])
+    return arguments
+
+
+def build_apply_camera_motion_arguments(
+    video_path: str,
+    *,
+    motion_style: str = "zoom",
+    start_time: float = 0.0,
+    end_time: float | None = None,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a camera-motion command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if motion_style not in {"zoom", "pan-zoom", "orbit-360", "bounce"}:
+        raise MediaKitInputError(f"不支持的运镜风格：{motion_style}")
+    if start_time < 0:
+        raise MediaKitInputError("运镜开始时间不能为负数。")
+    if end_time is not None and end_time <= start_time:
+        raise MediaKitInputError("运镜结束时间必须大于开始时间。")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "apply-camera-motion", "--video-url", video_path]
+    if motion_style != "zoom":
+        arguments.extend(["--motion-style", motion_style])
+    if start_time != 0.0:
+        arguments.extend(["--start-time", str(start_time)])
+    if end_time is not None:
+        arguments.extend(["--end-time", str(end_time)])
+    return arguments
+
+
+def build_apply_video_filter_arguments(
+    video_path: str,
+    *,
+    filter_style: str = "spring",
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-filter command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if filter_style not in {"spring", "sunset", "vivid", "fair_skin", "food"}:
+        raise MediaKitInputError(f"不支持的滤镜风格：{filter_style}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "apply-video-filter", "--video-url", video_path]
+    if filter_style != "spring":
+        arguments.extend(["--filter-style", filter_style])
+    return arguments
+
+
+def build_flip_video_arguments(
+    video_path: str,
+    *,
+    is_flip_horizontal: bool = False,
+    is_flip_vertical: bool = False,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-flip command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if not is_flip_horizontal and not is_flip_vertical:
+        raise MediaKitInputError("水平翻转和垂直翻转至少需要开启一项。")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "flip-video", "--video-url", video_path]
+    if is_flip_horizontal:
+        arguments.append("--is-flip-horizontal")
+    if is_flip_vertical:
+        arguments.append("--is-flip-vertical")
+    return arguments
+
+
+def build_rotate_video_arguments(
+    video_path: str,
+    *,
+    rotate_direction: str,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-rotate command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if rotate_direction not in {"rotate_left_90", "rotate_right_90", "rotate_180"}:
+        raise MediaKitInputError(f"不支持的旋转方向：{rotate_direction}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + [
+        "editing",
+        "rotate-video",
+        "--video-url",
+        video_path,
+        "--rotate-direction",
+        rotate_direction,
+    ]
+    return arguments
+
+
+def build_concat_video_arguments(
+    video_paths: Sequence[str],
+    *,
+    transitions: Sequence[str] | None = None,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-concat command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if not 1 <= len(video_paths) <= 100:
+        raise MediaKitInputError("拼接视频数量需在 1～100 之间。")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "concat-video"]
+    for path in video_paths:
+        arguments.extend(["--video-urls", path])
+    if transitions:
+        for transition in transitions:
+            arguments.extend(["--transitions", transition])
+    return arguments
+
+
+def build_concat_audio_arguments(
+    audio_paths: Sequence[str],
+    *,
+    output_format: str = "m4a",
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build an audio-concat command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if not 1 <= len(audio_paths) <= 100:
+        raise MediaKitInputError("拼接音频数量需在 1～100 之间。")
+    if output_format not in {"mp3", "m4a", "ogg", "flac", "wav"}:
+        raise MediaKitInputError(f"不支持的输出音频格式：{output_format}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "concat-audio"]
+    for path in audio_paths:
+        arguments.extend(["--audio-urls", path])
+    if output_format != "m4a":
+        arguments.extend(["--format", output_format])
+    return arguments
+
+
+def build_mix_audio_arguments(
+    audio_paths: Sequence[str],
+    *,
+    output_format: str = "m4a",
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build an audio-mix command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if not 1 <= len(audio_paths) <= 100:
+        raise MediaKitInputError("混音音频数量需在 1～100 之间。")
+    if output_format not in {"mp3", "m4a", "ogg", "flac", "wav"}:
+        raise MediaKitInputError(f"不支持的输出音频格式：{output_format}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "mix-audio"]
+    for path in audio_paths:
+        arguments.extend(["--audio-urls", path])
+    if output_format != "m4a":
+        arguments.extend(["--format", output_format])
+    return arguments
+
+
+def build_mux_audio_video_arguments(
+    video_path: str,
+    audio_path: str,
+    *,
+    is_audio_reserve: bool = True,
+    is_video_audio_sync: bool = False,
+    sync_method: str = "trim",
+    sync_mode: str = "video",
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build an audio-video mux command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if sync_method not in {"trim", "speed"}:
+        raise MediaKitInputError(f"不支持的对齐方式：{sync_method}")
+    if sync_mode not in {"video", "audio"}:
+        raise MediaKitInputError(f"不支持的对齐基准：{sync_mode}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + [
+        "editing",
+        "mux-audio-video",
+        "--video-url",
+        video_path,
+        "--audio-url",
+        audio_path,
+    ]
+    if not is_audio_reserve:
+        arguments.append("--is-audio-reserve=false")
+    if is_video_audio_sync:
+        arguments.append("--is-video-audio-sync=true")
+        if sync_method != "trim":
+            arguments.extend(["--sync-method", sync_method])
+        if sync_mode != "video":
+            arguments.extend(["--sync-mode", sync_mode])
+    return arguments
+
+
+def build_add_subtitle_arguments(
+    video_path: str,
+    *,
+    subtitle_url: str | None = None,
+    subtitles: Sequence[Mapping[str, Any]] | None = None,
+    subtitle_font_type: str = "sy_black",
+    subtitle_pos_preset: str = "bottom_center",
+    subtitle_font_size: int = 50,
+    subtitle_font_color: str = "#FFFFFFFF",
+    subtitle_text_effect: str | None = None,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a burn-subtitle command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if subtitle_font_type not in {"sy_black", "pm_zhengdao", "zhanku_kuaile"}:
+        raise MediaKitInputError(f"不支持的字体：{subtitle_font_type}")
+    if subtitle_pos_preset not in {
+        "bottom_center",
+        "top_center",
+        "center",
+        "lower_third",
+    }:
+        raise MediaKitInputError(f"不支持的字幕位置预设：{subtitle_pos_preset}")
+    if subtitle_font_size <= 0:
+        raise MediaKitInputError("字幕字号必须为正数。")
+    import math
+    if subtitle_url is not None and (not isinstance(subtitle_url, str) or not subtitle_url.strip()):
+        raise MediaKitInputError("字幕文件地址不能为空。")
+    if not subtitle_url and not subtitles:
+        raise MediaKitInputError("字幕文件 URL 与非空字幕列表至少需要提供一项。")
+    if subtitles is not None:
+        if not isinstance(subtitles, (list, tuple)) or not subtitles:
+            raise MediaKitInputError("字幕列表必须是非空数组。")
+        for item in subtitles:
+            if not isinstance(item, Mapping) or not all(key in item for key in ("subtitle_text", "start_time", "end_time")):
+                raise MediaKitInputError("字幕对象需包含 subtitle_text、start_time、end_time 字段。")
+            if not isinstance(item["subtitle_text"], str):
+                raise MediaKitInputError("字幕文本必须为字符串。")
+            start, end = item["start_time"], item["end_time"]
+            if any(isinstance(x, bool) or not isinstance(x, (int, float)) or not math.isfinite(x) for x in (start, end)):
+                raise MediaKitInputError("字幕时间必须是有限数值。")
+            if start < 0 or end <= start:
+                raise MediaKitInputError("字幕开始时间须非负，结束时间必须大于开始时间。")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "add-subtitle-to-video", "--video-url", video_path]
+    if subtitle_url:
+        arguments.extend(["--subtitle-url", subtitle_url])
+    if subtitles:
+        arguments.extend(
+            ["--subtitles", json.dumps(list(subtitles), ensure_ascii=False)]
+        )
+    if subtitle_font_type != "sy_black":
+        arguments.extend(["--subtitle-font-type", subtitle_font_type])
+    if subtitle_pos_preset != "bottom_center":
+        arguments.extend(["--subtitle-pos-preset", subtitle_pos_preset])
+    if subtitle_font_size != 50:
+        arguments.extend(["--subtitle-font-size", str(subtitle_font_size)])
+    if subtitle_font_color != "#FFFFFFFF":
+        arguments.extend(["--subtitle-font-color", subtitle_font_color])
+    if subtitle_text_effect:
+        arguments.extend(["--subtitle-text-effect", subtitle_text_effect])
+    return arguments
+
+
+def build_stitch_video_arguments(
+    video_paths: Sequence[str],
+    *,
+    stitch_direction: str,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-stitch command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if not 2 <= len(video_paths) <= 3:
+        raise MediaKitInputError("拼合视频数量需在 2～3 之间。")
+    if stitch_direction not in {"horizontal", "vertical"}:
+        raise MediaKitInputError(f"不支持的拼合方向：{stitch_direction}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    videos = json.dumps(
+        [{"video_url": path} for path in video_paths], ensure_ascii=False
+    )
+    arguments = prefix + [
+        "editing",
+        "stitch-video",
+        "--videos",
+        videos,
+        "--stitch-direction",
+        stitch_direction,
+    ]
+    return arguments
+
+
+def build_crop_video_arguments(
+    video_path: str,
+    *,
+    top_left_x: int,
+    top_left_y: int,
+    bottom_right_x: int,
+    bottom_right_y: int,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-crop command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if top_left_x < 0 or top_left_y < 0:
+        raise MediaKitInputError("裁剪区域左上角坐标不能为负数。")
+    if bottom_right_x <= top_left_x or bottom_right_y <= top_left_y:
+        raise MediaKitInputError("裁剪区域右下角坐标必须大于左上角坐标。")
+    if bottom_right_x - top_left_x < 16 or bottom_right_y - top_left_y < 16:
+        raise MediaKitInputError("裁剪区域的宽和高不得小于 16 像素。")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + [
+        "editing",
+        "crop-video",
+        "--video-url",
+        video_path,
+        "--top-left-x",
+        str(top_left_x),
+        "--top-left-y",
+        str(top_left_y),
+        "--bottom-right-x",
+        str(bottom_right_x),
+        "--bottom-right-y",
+        str(bottom_right_y),
+    ]
+    return arguments
+
+
+#: Output formats accepted by the audio editing tools.
+_AUDIO_FORMATS = ("mp3", "m4a", "ogg", "flac", "wav")
+
+
+def build_adjust_audio_speed_arguments(
+    audio_path: str,
+    *,
+    speed: float = 1.0,
+    output_format: str = "m4a",
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build an audio speed-change command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if not 0.1 <= speed <= 4.0:
+        raise MediaKitInputError("音频变速倍速需在 0.1～4.0 之间。")
+    if output_format not in _AUDIO_FORMATS:
+        raise MediaKitInputError(f"不支持的输出格式：{output_format}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "adjust-audio-speed", "--audio-url", audio_path]
+    if speed != 1.0:
+        arguments.extend(["--speed", str(speed)])
+    if output_format != "m4a":
+        arguments.extend(["--format", output_format])
+    return arguments
+
+
+def build_trim_audio_arguments(
+    audio_path: str,
+    *,
+    start_time: float = 0.0,
+    end_time: float | None = None,
+    output_format: str = "m4a",
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build an audio-trim command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if start_time < 0:
+        raise MediaKitInputError("裁剪起点不能为负数。")
+    if end_time is not None and end_time <= start_time:
+        raise MediaKitInputError("裁剪终点必须大于起点。")
+    if output_format not in _AUDIO_FORMATS:
+        raise MediaKitInputError(f"不支持的输出格式：{output_format}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "trim-audio", "--audio-url", audio_path]
+    if start_time != 0.0:
+        arguments.extend(["--start-time", str(start_time)])
+    if end_time is not None:
+        arguments.extend(["--end-time", str(end_time)])
+    if output_format != "m4a":
+        arguments.extend(["--format", output_format])
+    return arguments
+
+
+def build_fade_audio_arguments(
+    audio_path: str,
+    *,
+    fade_in_duration: float = 1.0,
+    fade_out_duration: float = 1.0,
+    output_format: str = "mp3",
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build an audio fade command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if fade_in_duration < 0 or fade_out_duration < 0:
+        raise MediaKitInputError("淡入淡出时长不能为负数。")
+    if output_format not in _AUDIO_FORMATS:
+        raise MediaKitInputError(f"不支持的输出格式：{output_format}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + ["editing", "fade-audio", "--audio-url", audio_path]
+    if fade_in_duration != 1.0:
+        arguments.extend(["--fade-in-duration", str(fade_in_duration)])
+    if fade_out_duration != 1.0:
+        arguments.extend(["--fade-out-duration", str(fade_out_duration)])
+    if output_format != "mp3":
+        arguments.extend(["--format", output_format])
+    return arguments
+
+
+def build_fade_video_audio_arguments(
+    video_path: str,
+    *,
+    fade_in_duration: float = 1.0,
+    fade_out_duration: float = 1.0,
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build a video-audio fade command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if fade_in_duration < 0 or fade_out_duration < 0:
+        raise MediaKitInputError("淡入淡出时长不能为负数。")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + [
+        "editing",
+        "fade-video-audio",
+        "--video-url",
+        video_path,
+    ]
+    if fade_in_duration != 1.0:
+        arguments.extend(["--fade-in-duration", str(fade_in_duration)])
+    if fade_out_duration != 1.0:
+        arguments.extend(["--fade-out-duration", str(fade_out_duration)])
+    return arguments
+
+
+def build_extract_animated_image_arguments(
+    video_path: str,
+    *,
+    start_time: float,
+    end_time: float,
+    output_format: str = "gif",
+    run_mode: str = "cloud",
+) -> list[str]:
+    """Build an animated-image extraction command for cloud or local execution."""
+    if run_mode not in {"cloud", "local"}:
+        raise MediaKitInputError(f"不支持的运行模式：{run_mode}")
+    if start_time < 0:
+        raise MediaKitInputError("动图起始时间不能为负数。")
+    if end_time <= start_time:
+        raise MediaKitInputError("动图结束时间必须大于起始时间。")
+    if output_format not in {"gif", "webp"}:
+        raise MediaKitInputError(f"不支持的动图格式：{output_format}")
+    prefix = ["--local"] if run_mode == "local" else ["--cloud"]
+    arguments = prefix + [
+        "editing",
+        "extract-animated-image",
+        "--video-url",
+        video_path,
+        "--start-time",
+        str(start_time),
+        "--end-time",
+        str(end_time),
+    ]
+    if output_format != "gif":
+        arguments.extend(["--output-format", output_format])
+    return arguments

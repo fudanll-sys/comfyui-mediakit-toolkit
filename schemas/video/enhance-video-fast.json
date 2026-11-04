@@ -3,5 +3,106 @@
   "tool": "enhance-video-fast",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "集成轻量级超分与智能画质增强，采用速度优先策略，高效兼顾处理效率与画面效果，尤其适用于处理时延敏感的业务场景。",
+    "input_schema": {
+      "allOf": [
+        {
+          "not": {
+            "required": [
+              "resolution",
+              "resolution_limit"
+            ]
+          }
+        }
+      ],
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "bitrate": {
+          "description": "目标平均码率，单位为 kbps，取值范围 [10, 150000]。不填时按 bitrate_level 结合分辨率与帧率自动换算。当同时指定 bitrate 与 bitrate_level 时，仅 bitrate 生效。",
+          "maximum": 150000,
+          "minimum": 10,
+          "type": "integer"
+        },
+        "bitrate_level": {
+          "default": "medium",
+          "description": "bitrate_level 是控制输出视频平均码率的目标码率档位，会影响输出视频的视觉质量和文件体积。可使用 low、medium、high：low 表示低码率，medium 表示中码率且为推荐档位，high 表示高码率。bitrate_level 非必填，默认为 medium。",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "type": "string",
+          "x-description-en": "This parameter is optional and controls the output video's average bitrate and affects visual quality and final file size. It supports low, medium, and high, and defaults to medium. The actual bitrate is automatically calculated using target resolution and frame rate."
+        },
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "fps": {
+          "description": "fps 用于指定目标帧率，单位为 fps，范围为 [15, 120]。建议 fps 不超过原片帧率的 4 倍。fps 非必填；未指定 fps 时，输出视频保持与原始片源一致的帧率。",
+          "maximum": 120,
+          "minimum": 15,
+          "type": "number",
+          "x-description-en": "This parameter is optional and sets the target frame rate, in fps. Its inclusive minimum is 15 and its inclusive maximum is 120. The target frame rate is recommended not to exceed 4x the source frame rate. If fps is omitted, the output retains the source video's frame rate."
+        },
+        "resolution": {
+          "description": "resolution 是目标分辨率档位，用于将视频超分到指定规格；支持 240p、360p、480p、540p、720p、1080p、2k、4k。resolution 非必填；resolution 与 resolution_limit 互斥，不得同时配置。",
+          "enum": [
+            "240p",
+            "360p",
+            "480p",
+            "540p",
+            "720p",
+            "1080p",
+            "2k",
+            "4k"
+          ],
+          "type": "string",
+          "x-description-en": "This parameter is optional and sets the target resolution level, and it can upscale the video to a specified level. It supports 240p, 360p, 480p, 540p, 720p, 1080p, 2k, and 4k. This parameter and resolution_limit are mutually exclusive and cannot be configured together."
+        },
+        "resolution_limit": {
+          "description": "resolution_limit 用于指定目标分辨率的短边像素限制，范围为 [128, 2160]；系统会在保持原视频宽高比的前提下等比缩放到该短边限制值。resolution_limit 非必填；resolution_limit 与 resolution 互斥，不得同时配置。",
+          "maximum": 2160,
+          "minimum": 128,
+          "type": "integer",
+          "x-description-en": "This parameter is optional and sets the target resolution's short-side pixel limit. Based on it, the system scales the video proportionally while preserving its original aspect ratio. It has an inclusive minimum of 128 and an inclusive maximum of 2160. This parameter and resolution are mutually exclusive and cannot be configured together."
+        },
+        "video_url": {
+          "description": "video_url 是待增强视频的 URL。必须提供 video_url；支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议。输入支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式；输入视频分辨率长边范围为 [360,2560]、短边范围为 [360,1440]，最高支持 2K。建议单个输入文件大小不超过 10 GB。",
+          "format": "media-to-vid",
+          "type": "string",
+          "x-description-en": "This required parameter is the URL of the video to be enhanced. Only publicly accessible HTTP or HTTPS video URLs are supported. Common supported video formats include mp4, flv, ts, avi, mov, wmv, and mkv. The input video's long side must be in the inclusive range 360 to 2560, and its short side must be in the inclusive range 360 to 1440. Input resolution up to 2K is supported. The input file size is recommended not to exceed 10 GB."
+        }
+      },
+      "required": [
+        "video_url"
+      ],
+      "type": "object"
+    },
+    "name": "enhance_video_fast",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

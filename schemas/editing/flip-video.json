@@ -3,5 +3,84 @@
   "tool": "flip-video",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "用于视频画面翻转，对指定视频进行上下或左右镜像翻转。",
+    "input_schema": {
+      "anyOf": [
+        {
+          "properties": {
+            "is_flip_vertical": {
+              "const": true
+            }
+          },
+          "required": [
+            "is_flip_vertical"
+          ]
+        },
+        {
+          "properties": {
+            "is_flip_horizontal": {
+              "const": true
+            }
+          },
+          "required": [
+            "is_flip_horizontal"
+          ]
+        }
+      ],
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "is_flip_horizontal": {
+          "default": false,
+          "description": "可省略，用于控制是否进行水平（左右）翻转，默认值为 false。",
+          "type": "boolean",
+          "x-description-en": "Optional. Controls whether the video is flipped horizontally from left to right. Defaults to false."
+        },
+        "is_flip_vertical": {
+          "default": false,
+          "description": "可省略，用于控制是否进行垂直（上下）翻转，默认值为 false。is_flip_vertical 和 is_flip_horizontal 两个参数至少需要将其中一个设置为 true，否则处理后的视频与原视频没有区别；如果两个参数都设置为 true，效果等同于将画面旋转 180 度。",
+          "type": "boolean",
+          "x-description-en": "Optional. Controls whether the video is flipped vertically from top to bottom. Defaults to false. At least one of is_flip_vertical and is_flip_horizontal must be set to true. If neither is set to true, the processed video is identical to the source. When both are set to true, the effect is equivalent to rotating the video 180 degrees."
+        },
+        "video_url": {
+          "description": "待翻转的视频 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式；最高支持 4K (3840×2160) 分辨率；建议输入文件大小不超过 10 GB。",
+          "format": "media-to-url",
+          "type": "string",
+          "x-description-en": "The URL of the video to be flipped. This parameter is required. Only publicly accessible HTTP/HTTPS URLs are supported as the file source. Supported inputs include common video formats such as mp4, flv, ts, avi, mov, wmv, and mkv. It is recommended that the input file size not exceed 10 GB. Input resolution up to 4K (3840×2160) is supported."
+        }
+      },
+      "required": [
+        "video_url"
+      ],
+      "type": "object"
+    },
+    "name": "flip_video",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

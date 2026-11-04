@@ -3,5 +3,80 @@
   "tool": "segment-scenes",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "依据视频的转场和画面内容变化自动切分多个场景片段，输出每个场景片段的时间轴信息与对应的独立视频文件。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "enable_clip_fade": {
+          "default": false,
+          "description": "enable_clip_fade 控制是否将检测到的淡入或淡出片段作为独立切片输出。enable_clip_fade 的默认值为 false。enable_clip_fade 为 true 且视频存在明显淡入或淡出过渡时，会将其分割为独立切片。enable_clip_fade 为 false 时不独立输出淡入或淡出片段，而将其视为前后场景的一部分并合并到相邻切片。",
+          "type": "boolean",
+          "x-description-en": "Controls whether detected fade-in/fade-out segments are output as independent clips. This parameter is optional and can be set to false or true, and defaults to false. When set to true, noticeable fade-in/fade-out transitions are split into independent clips. When set to false, fade transitions are not output separately and are merged into adjacent clips as part of the preceding or following scene."
+        },
+        "max_duration": {
+          "description": "max_duration 表示单个切片的最大时长，单位为秒。max_duration 的默认值为 30 秒。max_duration 必须大于或等于 min_duration。大于 max_duration 的片段将被强制切分。",
+          "minimum": 0,
+          "type": "number",
+          "x-description-en": "The maximum duration of a single clip, in seconds. This parameter is optional and defaults to 30. The value should be greater than or equal to min_duration. Segments longer than this maximum are forcibly split."
+        },
+        "min_duration": {
+          "description": "min_duration 表示单个切片的最小时长，单位为秒。min_duration 的默认值为 3 秒。小于 min_duration 的片段将被合并。min_duration 必须小于或等于 max_duration。",
+          "minimum": 0,
+          "type": "number",
+          "x-description-en": "The minimum duration of a single clip, in seconds. This parameter is optional and defaults to 3. It should be less than or equal to max_duration. Clips shorter than this duration are merged."
+        },
+        "return_segment_videos": {
+          "default": true,
+          "description": "return_segment_videos 的默认值为 true。return_segment_videos 为 true 时生成切片文件，并在 result.segments[].segment_video_url 返回各切片下载链接。return_segment_videos 为 false 时不生成切片文件，仅返回 start_time 和 end_time 切片时间轴，不返回 segment_video_url。false 可用于只需获取场景时间码并由业务侧自行处理切片的场景，可降低任务耗时。",
+          "type": "boolean",
+          "x-description-en": "Optional field that controls whether clip video files are generated and returned. It can be set to true or false, and the default value is true. When set to true, clip files are generated and each clip download URL is returned in result.segments[].segment_video_url. When set to false, clip files are not generated and only the start_time and end_time timeline is returned, without segment_video_url. Setting it to false is suitable when only scene timecodes are needed and clipping is handled by the caller, and it can reduce task processing time."
+        },
+        "segment_threshold": {
+          "description": "segment_threshold 是场景切分的敏感度阈值，最小值为 0，必须小于 100。取值越低，算法对场景变化越敏感，切分出的片段越多；取值越高，算法越倾向将微小变化视为同一场景，切分出的片段越少。同时设置 min_duration、max_duration 和 segment_threshold 时，系统采用两阶段逻辑以满足全部约束：第一阶段根据 segment_threshold 和 min_duration 进行切分；第一阶段后如有切片时长超过 max_duration，系统忽略 segment_threshold 再次切分，确保最终时长不超过 max_duration。",
+          "maximum": 100,
+          "minimum": 0,
+          "type": "number"
+        },
+        "video_url": {
+          "description": "video_url 是待处理的视频 URL。视频来源支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议。支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式。单个视频时长必须不超过 2 小时。",
+          "format": "media-to-vid",
+          "type": "string",
+          "x-description-en": "The URL of the video to be processed. This parameter is required. Commonly supported video formats include mp4, flv, ts, avi, mov, wmv, and mkv. Only publicly accessible HTTP/HTTPS URLs are supported as file sources. A single video must not exceed 2 hours."
+        }
+      },
+      "required": [
+        "video_url"
+      ],
+      "type": "object"
+    },
+    "name": "segment_scenes",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

@@ -3,5 +3,123 @@
   "tool": "video-understand-router",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "基于火山方舟视觉大模型，接收单个视频及自然语言指令，并结合视频时长、分析档位、场景和用户偏好自动选择抽帧、音频分析与模型链路，输出结构化理解结果；适用于内容审核、视频检索、标签生成、视频摘要和创作剪辑。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "level": {
+          "default": "Economy",
+          "description": "level 是分析档位，决定任务的默认抽帧策略与模型选择，以在成本、速度和质量之间取得平衡；支持 Economy、Balanced、Quality，默认 Economy。Economy 是速度优先的经济档位，适合大批量、对结果详细程度要求较低的内容标注；Balanced 是速度与质量兼顾的均衡档位，适合常规内容审核与检索场景；Quality 是结果优先的质量档位，适合需要更精细语义理解的场景。",
+          "enum": [
+            "Economy",
+            "Balanced",
+            "Quality"
+          ],
+          "type": "string"
+        },
+        "manual_option": {
+          "description": "manual_option 是手动模式相关参数；未传 manual_option 时表示完全使用 level 档位策略，不进行手动覆盖。",
+          "properties": {
+            "fps": {
+              "default": 1,
+              "description": "manual_option.fps 是抽帧帧率，设置后会按照指定帧率进行均匀抽帧；最小 0.2，最大 5.0，默认 1.0。",
+              "maximum": 5,
+              "minimum": 0.2,
+              "type": "number"
+            },
+            "max_snapshot_number": {
+              "default": 0,
+              "description": "manual_option.max_snapshot_number 是最大抽帧帧数，最小 0，最大 1000，默认 0；显式设置时会覆盖档位策略；设为 0 时由 level 档位决定截图数量。",
+              "maximum": 1000,
+              "type": "integer"
+            },
+            "need_audio": {
+              "default": false,
+              "description": "manual_option.need_audio 表示是否开启或关闭音频分析，支持 true 和 false，默认 false。为 true 时开启音频分析，系统将选用支持音视频多模态的模型，并分析音频内容。为 false 时关闭音频分析，仅分析视频画面；即使 manual_option.need_audio 为 false 或未提供，如果 prompt 中包含“声音”、“音乐”等音频相关关键词，也可能自动触发音频分析。",
+              "type": "boolean"
+            }
+          },
+          "type": "object",
+          "x-skip-default-populate-on-missing-object": true
+        },
+        "prefer_endpoints": {
+          "description": "prefer_endpoints 是优先使用的推理接入点 ID（Endpoint ID）列表，最多 10 个；系统将从 prefer_endpoints 指定的推理接入点中结合策略选择最终模型；prefer_endpoints 的优先级高于 prefer_models。",
+          "items": {
+            "description": "指定使用的自定义推理点",
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "type": "array"
+        },
+        "prefer_models": {
+          "description": "prefer_models 是优先使用的模型 ID（Model ID）列表，最多 10 个；系统将从 prefer_models 指定的模型中结合策略选择最终模型。",
+          "items": {
+            "description": "指定使用的模型",
+            "type": "string"
+          },
+          "maxItems": 10,
+          "minItems": 1,
+          "type": "array"
+        },
+        "prompt": {
+          "description": "prompt 是用于指导大模型对视频内容进行分析的自然语言描述，最小长度为 1。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "scene": {
+          "description": "scene 是分析场景，用于系统优化处理策略；指定 scene 后，系统会自动决策使用该场景的最佳策略；不传时表示通用场景。editing 表示创作剪辑场景，模型会侧重于理解并输出带有精确时间戳的详细分镜信息，适用于分镜理解、智能剪辑、二次 AIGC 创作等下游任务。",
+          "enum": [
+            "editing"
+          ],
+          "type": "string"
+        },
+        "video_urls": {
+          "description": "video_urls 是待处理的视频 URL 列表，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式；单次任务最多支持传入 1 个视频文件。",
+          "items": {
+            "description": "video_urls 中单个视频时长不超过 2 小时。",
+            "format": "media-to-url",
+            "type": "string"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "video_urls",
+        "prompt"
+      ],
+      "type": "object"
+    },
+    "name": "video_understand_router",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

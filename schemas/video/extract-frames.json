@@ -3,5 +3,143 @@
   "tool": "extract-frames",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "从视频中抽取截图，截图结果支持用于视频封面、预览图、雪碧图或其他视频理解任务的输入。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "enable_sprite": {
+          "default": false,
+          "description": "默认 false。设为 true 时输出包含所有截图的雪碧图；设为 false 时输出多张独立截图。",
+          "type": "boolean",
+          "x-description-en": "Controls whether the captured images are combined, and can be set to false or true. false outputs multiple independent snapshots, while true outputs a sprite sheet containing all snapshots. It defaults to false."
+        },
+        "scale_long": {
+          "description": "scale_long 最小值为 0，最大值为 4096。输出图片长边不得超过原始视频长边。按长边缩放时，输出图片短边按原始比例自适应。enable_sprite 为 true 时，scale_long 定义单张小图的长边。同时设置 scale_long 和 scale_short 时保持原始宽高比，并分别约束长边和短边。",
+          "maximum": 4096,
+          "minimum": 0,
+          "type": "integer",
+          "x-description-en": "Sets the maximum pixel value of the output image's long side, with a minimum of 0 and a maximum of 4096. The output image's long side cannot exceed the original video's long side. When both scale_long and scale_short are set, scaling preserves aspect ratio while respecting both maxima. When enable_sprite is true, scale_long defines the long side of a single tile."
+        },
+        "scale_short": {
+          "description": "scale_short 最小值为 0，最大值为 4096。输出图片短边不得超过原始视频短边。按短边缩放时，输出图片长边按原始比例自适应。enable_sprite 为 true 时，scale_short 定义单张小图的短边。同时设置 scale_long 和 scale_short 时保持原始宽高比，并分别约束长边和短边。",
+          "maximum": 4096,
+          "minimum": 0,
+          "type": "integer",
+          "x-description-en": "The maximum pixel value for the output image's short side. It can be set from a minimum of 0 to a maximum of 4096, and the output image's short side cannot exceed the original video's short side. When enable_sprite is true, this value defines the short side of a single tile."
+        },
+        "scene_change_threshold": {
+          "default": 0.1,
+          "description": "scene_change_threshold 默认值为 0.1。scene_change_threshold 必须大于 0 且必须小于 1。scene_change_threshold 仅在 snapshot_type 为 SceneChange 时生效。scene_change_threshold 越小，场景变化检测越敏感，可能产生更多截图。",
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "snapshot_limit": {
+          "description": "snapshot_limit 最小值为 1，最大值为 1000。实际输出的截图数可能小于 snapshot_limit。snapshot_limit 仅在 snapshot_type 为 TimeInterval 或 SceneChange 时生效。enable_sprite 为 true 时，snapshot_limit 表示雪碧图大图数量上限，小图数量上限为 snapshot_limit*sprite_rows*sprite_cols。",
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer",
+          "x-description-en": "The maximum number of snapshots to generate. It can be set from a minimum of 1 to a maximum of 1000, and the actual number of output snapshots may be smaller than snapshot_limit. It is effective only for TimeInterval or SceneChange. When sprite sheets are enabled, it limits the number of large sprite sheets, and in sprite-sheet mode the small-tile limit is snapshot_limit * sprite_rows * sprite_cols."
+        },
+        "snapshot_type": {
+          "default": "TimeInterval",
+          "description": "snapshot_type 决定抽帧的具体方式，默认为 TimeInterval，支持 TimeInterval、SpecifiedTime、SpecifiedFrames 和 SceneChange 四个字面值。TimeInterval 表示按时间间隔抽帧，并需配合 time_interval。SpecifiedTime 表示按指定时间点抽帧，并需配合 specified_time。SpecifiedFrames 表示按指定帧号抽帧，并需配合 specified_frames。SceneChange 表示按场景变化抽帧，并需配合 scene_change_threshold。",
+          "enum": [
+            "TimeInterval",
+            "SpecifiedTime",
+            "SpecifiedFrames",
+            "SceneChange"
+          ],
+          "type": "string",
+          "x-description-en": "Determines the frame-extraction strategy and can be set to TimeInterval, SpecifiedTime, SpecifiedFrames, or SceneChange, defaulting to TimeInterval. TimeInterval extracts frames at a fixed time interval and is used with time_interval. SpecifiedTime extracts frames at specified time points and is used with specified_time. SpecifiedFrames extracts frames at specified frame numbers and is used with specified_frames. SceneChange extracts frames on scene changes and is used with scene_change_threshold."
+        },
+        "specified_frames": {
+          "description": "specified_frames 当前仅支持 0 表示视频首帧、-1 表示视频尾帧，最多支持 2 个值。",
+          "items": {
+            "enum": [
+              0,
+              -1
+            ],
+            "type": "integer"
+          },
+          "maxItems": 2,
+          "minItems": 1,
+          "type": "array",
+          "x-description-en": "An optional list that supports up to 2 values."
+        },
+        "specified_time": {
+          "description": "specified_time 中时间点的单位为秒，支持最多 3 位小数，最多支持 1000 个时间点。",
+          "items": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "maxItems": 1000,
+          "minItems": 1,
+          "type": "array",
+          "x-description-en": "An optional list that supports up to 1000 time points."
+        },
+        "sprite_cols": {
+          "default": 10,
+          "description": "sprite_cols 表示雪碧图在 X 轴水平方向的小图数量，默认值为 10，最小值为 1，最大值为 100。sprite_cols 仅在 enable_sprite 为 true 时生效。过大的雪碧图行列数可能导致任务失败，雪碧图建议单边不超过 16384 像素。",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+          "x-description-en": "The number of tiles along the sprite sheet's horizontal X-axis. It defaults to 10, with a minimum of 1 and a maximum of 100. A single side of the final sprite sheet should not exceed 16384 pixels. This setting takes effect only when enable_sprite is true."
+        },
+        "sprite_rows": {
+          "default": 10,
+          "description": "sprite_rows 表示雪碧图在 Y 轴垂直方向的小图数量，默认值为 10，最小值为 1，最大值为 100。sprite_rows 仅在 enable_sprite 为 true 时生效。过大的雪碧图行列数可能导致任务失败，雪碧图建议单边不超过 16384 像素。",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+          "x-description-en": "The number of rows of tiles along the sprite sheet's vertical Y-axis. It defaults to 10, with a minimum of 1 and a maximum of 100. Setting too many sprite rows or columns may cause the task to fail, and a single side of the final sprite sheet should not exceed 16384 pixels. This setting takes effect only when enable_sprite is true."
+        },
+        "time_interval": {
+          "default": 1,
+          "description": "time_interval 默认值为 1，单位为秒，支持最多 3 位小数，必须大于 0.001。time_interval 仅在 snapshot_type 为 TimeInterval 时生效。",
+          "minimum": 0.001,
+          "type": "number"
+        },
+        "video_url": {
+          "description": "video_url 是待处理的视频 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议。视频输入支持 mp4、mov、mkv、flv、ts、avi、wmv 等主流视频格式。",
+          "format": "media-to-vid",
+          "type": "string",
+          "x-description-en": "video_url is the URL of the video to be processed. Supported mainstream video formats include mp4, flv, ts, avi, mov, wmv, and mkv. Only publicly accessible HTTP or HTTPS video URLs are supported."
+        }
+      },
+      "required": [
+        "video_url"
+      ],
+      "type": "object"
+    },
+    "name": "extract_frames",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

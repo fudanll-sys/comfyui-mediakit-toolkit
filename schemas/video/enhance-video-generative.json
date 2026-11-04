@@ -3,5 +3,82 @@
   "tool": "enhance-video-generative",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "基于 Diffusion 扩散大模型技术提供生成式视频增强与修复，通过深度语义理解，智能补全和生成符合视频内容的真实细节，可修复视频在压缩或老化过程中损失的像素，最终产出自然、高保真的视频画面。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "bitrate": {
+          "description": "目标平均码率，单位为 kbps，取值范围 [10, 150000]。不填时按 bitrate_level 结合分辨率与帧率自动换算。当同时指定 bitrate 与 bitrate_level 时，仅 bitrate 生效。",
+          "maximum": 150000,
+          "minimum": 10,
+          "type": "integer"
+        },
+        "bitrate_level": {
+          "default": "medium",
+          "description": "bitrate_level 是控制输出视频平均码率的目标码率档位，会影响视频的视觉质量和最终文件体积；high 表示高码率，medium 表示中码率且为推荐档位，low 表示低码率；默认值为 medium。",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ],
+          "type": "string"
+        },
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "fps": {
+          "description": "fps 指定目标帧率，单位为 fps；支持范围为 [15, 120]；建议不超过原片帧率的 4 倍；未指定 fps 时，输出视频保持与原始片源一致的帧率。",
+          "maximum": 120,
+          "minimum": 15,
+          "type": "number"
+        },
+        "resolution": {
+          "default": "720p",
+          "description": "目标分辨率。可选值：720p（默认值）；1080p；2k；4k",
+          "enum": [
+            "720p",
+            "1080p",
+            "2k",
+            "4k"
+          ],
+          "type": "string"
+        },
+        "video_url": {
+          "description": "video_url 是待增强的视频 URL；支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；仅支持 SDR 视频；支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式；输入视频最高支持 1080p，长边范围为 [360,1920]，短边范围为 [360,1080]。",
+          "format": "media-to-vid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "video_url"
+      ],
+      "type": "object"
+    },
+    "name": "enhance_video_generative",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

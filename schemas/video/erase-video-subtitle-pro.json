@@ -3,5 +3,273 @@
   "tool": "erase-video-subtitle-pro",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "用于字幕擦除（精细化版），对视频字幕进行高质量无痕擦除，并最大程度还原视频画面。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "erase_ratio_location": {
+          "description": "配置擦除框位置数组后，系统仅在指定矩形框选区域内执行文本擦除。每个 location 由左上角与右下角两个顶点确定矩形擦除区域，坐标以画面左上角 (0, 0) 为原点、右下角为 (1, 1)，X 轴向右、Y 轴向下，使用相对画面宽高的归一化比例 [0,1]。最多支持 20 个擦除框。",
+          "items": {
+            "description": "location 对象用于定义一个矩形擦除框，使用归一化的坐标系，以视频画面左上角为原点 (0, 0)、右下角为 (1, 1)，通过指定左上和右下两个顶点的坐标来确定擦除区域。",
+            "properties": {
+              "bottom_right_x": {
+                "description": "bottom_right_x 是框选区域右下角相对于视频左上角在 X 轴上的偏移比例，范围 [0,1]；0 与左边缘对齐，1 与右边缘对齐。该值应大于 top_left_x。",
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number",
+                "x-description-en": "bottom_right_x is required, ranges from 0 to 1 inclusive, and must be greater than top_left_x. It is the horizontal ratio of the box's bottom-right corner relative to the frame's left edge."
+              },
+              "bottom_right_y": {
+                "description": "bottom_right_y 是框选区域右下角相对于视频左上角在 Y 轴上的偏移比例，范围 [0,1]；0 与上边缘对齐，1 与下边缘对齐。该值应大于 top_left_y。",
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number",
+                "x-description-en": "bottom_right_y is required, ranges from 0 to 1 inclusive, and must be greater than top_left_y. It is the vertical ratio of the box's bottom-right corner relative to the frame's top edge."
+              },
+              "top_left_x": {
+                "description": "top_left_x 是框选区域左上角相对于视频左上角在 X 轴上的偏移比例，范围 [0,1]；0 与左边缘对齐，1 与右边缘对齐。",
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number",
+                "x-description-en": "top_left_x is required and ranges from 0 to 1 inclusive. It is the horizontal ratio of the box's top-left corner relative to the frame's left edge."
+              },
+              "top_left_y": {
+                "description": "top_left_y 是框选区域左上角相对于视频左上角在 Y 轴上的偏移比例，范围 [0,1]；0 与上边缘对齐，1 与下边缘对齐。",
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number",
+                "x-description-en": "This value is required and specifies the vertical ratio of the box's top-left corner relative to the frame's top edge. It can be set from a minimum of 0 to a maximum of 1."
+              }
+            },
+            "required": [
+              "top_left_x",
+              "top_left_y",
+              "bottom_right_x",
+              "bottom_right_y"
+            ],
+            "type": "object",
+            "x-description-en": "Each Location object defines a rectangular erasure area. It uses normalized coordinates from top-left (0, 0) to bottom-right (1, 1).",
+            "x-field-relations": [
+              {
+                "left": "bottom_right_x",
+                "operator": "greater_than",
+                "right": "top_left_x"
+              },
+              {
+                "left": "bottom_right_y",
+                "operator": "greater_than",
+                "right": "top_left_y"
+              }
+            ]
+          },
+          "maxItems": 20,
+          "minItems": 0,
+          "type": "array",
+          "x-description-en": "This field is optional. When configured, it restricts text erasure to the specified rectangular regions and supports up to 20 erasure boxes. In Subtitle mode, the effective erasure region is the intersection of the custom boxes and the lower half of the frame."
+        },
+        "mode": {
+          "default": "Subtitle",
+          "description": "字幕擦除模式，默认 Subtitle，支持 Subtitle 和 Text。Subtitle 模式擦除 OCR 检测为字幕的文本，默认仅处理视频画面下半部分（下方 50%）区域；配置 erase_ratio_location 时，只处理自定义擦除框与画面下半部分的交集。Text 模式擦除 OCR 检测为字幕及人名、地名等其他类型文本，不包含牌匾等场景文字；默认检测整个视频画面，配置 erase_ratio_location 时仅在指定擦除框内执行。",
+          "enum": [
+            "Subtitle",
+            "Text"
+          ],
+          "type": "string",
+          "x-description-en": "This parameter is optional, supports Subtitle and Text, and defaults to Subtitle. Subtitle mode erases text that OCR detects as subtitles, and by default processes only subtitles in the lower half, the bottom 50%, of the video frame; in Subtitle mode, configuring erase_ratio_location limits erasure to the intersection of the custom boxes and the lower-half region. Text mode performs text detection over the entire video frame and erases subtitles and other OCR-detected text such as people names and place names, but excludes scene text such as signboards; in Text mode, configuring erase_ratio_location limits erasure to the specified boxes."
+        },
+        "model_version": {
+          "default": "v5",
+          "description": "擦除算法版本，豆包版仅支持 v5，默认 v5。V5 优化 AIGC 生成视频擦除字幕后的闪烁问题、带阴影字幕的擦除效果和误擦问题，并提升处理速度。",
+          "enum": [
+            "v5"
+          ],
+          "type": "string"
+        },
+        "output_encode_mode": {
+          "default": "Quality",
+          "description": "输出视频编码模式，默认 Quality。Quality 采用较高码率编码，画质更好，但文件体积可能更大；Size 在保证一定画质的前提下使输出码率接近源文件。",
+          "enum": [
+            "Quality",
+            "Size"
+          ],
+          "type": "string",
+          "x-description-en": "This parameter is optional, supports Quality and Size, and defaults to Quality. Quality mode uses a higher bitrate for better quality, but the file may be larger. Size mode keeps output bitrate close to the source while ensuring a certain quality level."
+        },
+        "subtitle_filter": {
+          "description": "subtitle_filter 通过文字高度和水平居中程度帮助系统更准确地判断哪些文本属于字幕，避免误擦大标题、台标、水印等非字幕文本。仅当文本高度不低于下限、不高于上限且水平方向足够居中时，文本才会被判定为字幕并擦除，大标题、台标、水印等文本会被排除。仅在 mode 为 Subtitle 时生效，不传时使用系统默认值。",
+          "properties": {
+            "center_offset_ratio": {
+              "description": "center_offset_ratio 是文字区域中心相对视频宽度中心的最大偏离比例，范围 [0,1]，默认 0.08；超过该比例的文本不会被判定为字幕。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number",
+              "x-description-en": "Optional. The maximum allowed ratio of the offset between the text's horizontal center and the video's horizontal center. Text exceeding this ratio is not treated as a subtitle. Ranges from a minimum of 0 to a maximum of 1, and defaults to 0.08."
+            },
+            "max_text_height_ratio": {
+              "description": "max_text_height_ratio 是相对视频高度的文字高度最大比例，范围 [0,1]；高于该高度的文本不会被判定为字幕；不传时默认 0.1（10%）。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number",
+              "x-description-en": "Optional. The maximum ratio of text height to video height. Text taller than this ratio is not treated as subtitles. Ranges from a minimum of 0 to a maximum of 1, and defaults to 0.1, or 10%."
+            },
+            "min_text_height_ratio": {
+              "description": "min_text_height_ratio 是相对视频高度的文字高度最小比例，范围 [0,1]，默认 0.01（1%）；低于该高度的文本不会被判定为字幕。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number",
+              "x-description-en": "The minimum ratio of text height to video height. This field is optional and defaults to 0.01, or 1%. It can be set from a minimum value of 0 to a maximum value of 1. Text shorter than this ratio is not treated as subtitles."
+            }
+          },
+          "type": "object",
+          "x-description-en": "Optional. Takes effect only when the mode is Subtitle, where it fine-tunes subtitle detection using text height and horizontal centering to help prevent accidental erasure of non-subtitle content such as titles or logos. If it is not specified, default values are used."
+        },
+        "time_segment_filter": {
+          "description": "按时间段控制字幕擦除范围；不配置时处理整段视频。mode 为 selected 时仅处理 segments 列出的时间段，mode 为 skip 时跳过这些时间段并处理其余部分。",
+          "properties": {
+            "mode": {
+              "description": "skip 跳过 segments 中列出的时间段并擦除其余部分；selected 仅擦除 segments 中列出的时间段。",
+              "enum": [
+                "skip",
+                "selected"
+              ],
+              "type": "string",
+              "x-description-en": "This field is required. It supports selected and skip. selected erases subtitles only within the listed segments, while skip preserves the listed segments and erases the rest of the video."
+            },
+            "segments": {
+              "description": "需要执行或跳过字幕擦除的时间段列表，至少包含 1 个时间段。",
+              "items": {
+                "description": "一个字幕擦除时间段，由起始时间、结束时间和可选的分段擦除框组成。",
+                "properties": {
+                  "end_time": {
+                    "description": "end_time 是以秒为单位的片段结束时间，需大于 start_time。",
+                    "minimum": 0,
+                    "type": "number",
+                    "x-description-en": "Required. The end time of the segment, measured in seconds, and must be greater than start_time."
+                  },
+                  "erase_ratio_location": {
+                    "description": "当前时间段专属的擦除框列表，每个时间段最多支持 20 个擦除框；仅在 time_segment_filter.mode 为 selected 时支持，且不能与顶层 erase_ratio_location 同时配置。不传或传空数组时，该时间段使用默认擦除行为。",
+                    "items": {
+                      "description": "当前时间段内的一个矩形擦除框；坐标以画面左上角 (0,0) 为原点、右下角 (1,1)，均使用相对画面宽高的归一化比例。",
+                      "properties": {
+                        "bottom_right_x": {
+                          "description": "擦除框右下角相对于视频画面左边缘的水平偏移比例，范围为 [0,1]，并且应大于 top_left_x。",
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "bottom_right_y": {
+                          "description": "擦除框右下角相对于视频画面顶边的垂直偏移比例，范围为 [0,1]，并且应大于 top_left_y。",
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "top_left_x": {
+                          "description": "擦除框左上角相对于视频画面左边缘的水平偏移比例，范围为 [0,1]。",
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        },
+                        "top_left_y": {
+                          "description": "擦除框左上角相对于视频画面顶边的垂直偏移比例，范围为 [0,1]。",
+                          "maximum": 1,
+                          "minimum": 0,
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "top_left_x",
+                        "top_left_y",
+                        "bottom_right_x",
+                        "bottom_right_y"
+                      ],
+                      "type": "object",
+                      "x-field-relations": [
+                        {
+                          "left": "bottom_right_x",
+                          "operator": "greater_than",
+                          "right": "top_left_x"
+                        },
+                        {
+                          "left": "bottom_right_y",
+                          "operator": "greater_than",
+                          "right": "top_left_y"
+                        }
+                      ]
+                    },
+                    "maxItems": 20,
+                    "minItems": 0,
+                    "type": "array"
+                  },
+                  "start_time": {
+                    "description": "start_time 是以秒为单位的片段起始时间，取值大于等于 0。",
+                    "minimum": 0,
+                    "type": "number",
+                    "x-description-en": "Start time of the segment, measured in seconds. This value is required."
+                  }
+                },
+                "required": [
+                  "start_time",
+                  "end_time"
+                ],
+                "type": "object",
+                "x-field-relations": [
+                  {
+                    "left": "end_time",
+                    "operator": "greater_than",
+                    "right": "start_time"
+                  }
+                ]
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "mode",
+            "segments"
+          ],
+          "type": "object"
+        },
+        "video_url": {
+          "description": "支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议，支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式，输入分辨率最高支持 2K，输出分辨率最高支持 1080P。",
+          "format": "media-to-vid",
+          "type": "string",
+          "x-description-en": "The URL of the video whose subtitles are to be erased. This value is required. Only publicly accessible HTTP/HTTPS video URLs are supported. Supported mainstream video formats include mp4, flv, ts, avi, mov, wmv, and mkv. The input resolution supports up to 2K, and the output resolution supports up to 1080P."
+        }
+      },
+      "required": [
+        "video_url"
+      ],
+      "type": "object"
+    },
+    "name": "erase_video_subtitle_pro",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

@@ -17,6 +17,7 @@ class _Input:
 
 class _Output:
     def __init__(self, **kwargs):
+        self.id = kwargs.get("id")
         self.kwargs = kwargs
 
 
@@ -48,6 +49,10 @@ def _fake_comfy_modules():
     for name in ("Video", "Audio", "Image", "Boolean", "Combo", "Float", "Int", "String"):
         setattr(io, name, types.SimpleNamespace(Input=_Input, Output=_Output))
 
+    io.Autogrow = types.SimpleNamespace(
+        Input=_Input,
+        TemplateNames=lambda input, names, min=1: types.SimpleNamespace(input=input, names=names, min=min),
+    )
     comfy_api = types.ModuleType("comfy_api")
     latest = types.ModuleType("comfy_api.latest")
     latest.ComfyExtension = _ComfyExtension
@@ -97,6 +102,24 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
                 "MediaKitVideoProbeMetadata",
                 "MediaKitTrimVideo",
                 "MediaKitExtractAudio",
+                "MediaKitAdjustVideoSpeed",
+                "MediaKitAdjustVideoVolume",
+                "MediaKitCameraMotion",
+                "MediaKitVideoFilter",
+                "MediaKitFlipVideo",
+                "MediaKitRotateVideo",
+                "MediaKitConcatVideo",
+                "MediaKitConcatAudio",
+                "MediaKitMixAudio",
+                "MediaKitMuxAudioVideo",
+                "MediaKitAddSubtitle",
+                "MediaKitStitchVideo",
+                "MediaKitCropVideo",
+                "MediaKitAdjustAudioSpeed",
+                "MediaKitTrimAudio",
+                "MediaKitFadeAudio",
+                "MediaKitFadeVideoAudio",
+                "MediaKitExtractAnimatedImage",
             ],
         )
 
@@ -104,15 +127,54 @@ class NodeSchemaTests(unittest.IsolatedAsyncioTestCase):
         expected = {
             "MediaKitTrimVideo": "Trim · 视频裁剪",
             "MediaKitExtractAudio": "Extract Audio · 提取音频",
+            "MediaKitAdjustVideoSpeed": "Speed · 视频变速",
+            "MediaKitAdjustVideoVolume": "Volume · 音量调整",
+            "MediaKitCameraMotion": "Camera Motion · 镜头运动",
+            "MediaKitVideoFilter": "Filter · 视频滤镜",
+            "MediaKitFlipVideo": "Flip · 视频翻转",
+            "MediaKitRotateVideo": "Rotate · 视频旋转",
+            "MediaKitConcatVideo": "Concat · 视频拼接",
+            "MediaKitConcatAudio": "Concat Audio · 音频拼接",
+            "MediaKitMixAudio": "Mix · 混音",
+            "MediaKitMuxAudioVideo": "Mux · 音视频合流",
+            "MediaKitAddSubtitle": "Subtitle · 视频加字幕",
+            "MediaKitStitchVideo": "Stitch · 视频拼合",
+            "MediaKitCropVideo": "Crop · 画面裁剪",
+            "MediaKitAdjustAudioSpeed": "Audio Speed · 音频变速",
+            "MediaKitTrimAudio": "Audio Trim · 音频裁剪",
+            "MediaKitFadeAudio": "Fade Audio · 音频淡入淡出",
+            "MediaKitFadeVideoAudio": "Fade · 视频声音淡入淡出",
+            "MediaKitExtractAnimatedImage": "Animated · 提取动图",
         }
-        for node in (self.extension.MediaKitTrimVideo, self.extension.MediaKitExtractAudio):
-            schema = node.define_schema()
-            self.assertEqual(schema.display_name, expected[schema.node_id])
+        for node_id, display_name in expected.items():
+            schema = getattr(self.extension, node_id).define_schema()
+            self.assertEqual(schema.display_name, display_name)
             self.assertEqual(schema.category, "MediaKit/Video Editing")
-            self.assertEqual(schema.inputs[0].id, "video")
 
     def test_editing_nodes_use_auto_run_mode_by_default(self):
-        for node in (self.extension.MediaKitTrimVideo, self.extension.MediaKitExtractAudio):
+        editing_nodes = [
+            self.extension.MediaKitTrimVideo,
+            self.extension.MediaKitExtractAudio,
+            self.extension.MediaKitAdjustVideoSpeed,
+            self.extension.MediaKitAdjustVideoVolume,
+            self.extension.MediaKitCameraMotion,
+            self.extension.MediaKitVideoFilter,
+            self.extension.MediaKitFlipVideo,
+            self.extension.MediaKitRotateVideo,
+            self.extension.MediaKitConcatVideo,
+            self.extension.MediaKitConcatAudio,
+            self.extension.MediaKitMixAudio,
+            self.extension.MediaKitMuxAudioVideo,
+            self.extension.MediaKitAddSubtitle,
+            self.extension.MediaKitStitchVideo,
+            self.extension.MediaKitCropVideo,
+            self.extension.MediaKitAdjustAudioSpeed,
+            self.extension.MediaKitTrimAudio,
+            self.extension.MediaKitFadeAudio,
+            self.extension.MediaKitFadeVideoAudio,
+            self.extension.MediaKitExtractAnimatedImage,
+        ]
+        for node in editing_nodes:
             schema = node.define_schema()
             run_mode_input = next(item for item in schema.inputs if item.id == "run_mode")
             self.assertEqual(run_mode_input.kwargs["default"], "auto")

@@ -3,5 +3,96 @@
   "tool": "concat-video",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "将多个现成视频按给定顺序拼接为一个完整视频文件，并可在拼接处添加转场。只按给定顺序拼接现成视频，不负责脚本、卖点、镜头选择、叙事节奏或完整视频创作。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "transitions": {
+          "description": "视频间的转场效果 ID 列表。默认无转场（硬切）。当视频数量超过转场数量 2 个及以上时，系统将自动循环使用转场。",
+          "items": {
+            "enum": [
+              "1182359",
+              "1182360",
+              "1182358",
+              "1182365",
+              "1182367",
+              "1182368",
+              "1182369",
+              "1182370",
+              "1182373",
+              "1182374",
+              "1182375",
+              "1182378"
+            ],
+            "type": "string",
+            "x-site-overrides": {
+              "byteplus": {
+                "enum": [
+                  "1109556",
+                  "1109558",
+                  "1109560",
+                  "1109568",
+                  "1109572",
+                  "1109574",
+                  "1109576",
+                  "1109578",
+                  "1109584",
+                  "1109586",
+                  "1109588",
+                  "1109594"
+                ]
+              }
+            }
+          },
+          "type": "array"
+        },
+        "video_urls": {
+          "description": "待拼接的视频 URL 列表，单次任务支持传入 1 到 100 个 URL；建议单个输入文件大小不超过 10 GB；输入视频最高支持 4K (3840×2160) 分辨率；支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式。当输入多个分辨率不一致的视频时，输出视频的分辨率以列表中第一个视频为基准。",
+          "items": {
+            "description": "待拼接的输入视频。String 类型，支持http://xxx或https://xxx格式 URL",
+            "format": "media-to-url",
+            "type": "string",
+            "x-description-en": "Only a publicly accessible HTTP or HTTPS URL is supported. Supported video formats include mp4, flv, ts, avi, mov, wmv, and mkv. Input resolution up to 4K (3840×2160) is supported. It is recommended that each file not exceed 10 GB."
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array",
+          "x-description-en": "The list of video URLs to be concatenated. This field is required. A single task supports at most 100 video URLs, and supports at least 1 video URL. If the input videos have inconsistent resolutions, the output resolution matches the first video in the list."
+        }
+      },
+      "required": [
+        "video_urls"
+      ],
+      "type": "object"
+    },
+    "name": "concat_video",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

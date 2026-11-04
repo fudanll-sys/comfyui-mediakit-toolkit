@@ -3,5 +3,258 @@
   "tool": "crop-image",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "对输入图像进行多模式裁剪，可执行方向裁剪、定向裁剪、自定义裁剪或内切圆裁剪，适用于多端尺寸适配、主体保留和指定区域截取。",
+    "input_schema": {
+      "description": "输入图片并指定裁剪模式。仅支持公网 URL。未传 crop_mode 时默认 directional，且方向裁剪默认位置为 center。 可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "oneOf": [
+        {
+          "properties": {
+            "crop_mode": {
+              "const": "directional"
+            }
+          },
+          "required": [
+            "crop_width",
+            "crop_height"
+          ]
+        },
+        {
+          "properties": {
+            "crop_mode": {
+              "const": "origin"
+            }
+          },
+          "required": [
+            "crop_width",
+            "crop_height",
+            "origin_x",
+            "origin_y",
+            "crop_mode"
+          ]
+        },
+        {
+          "properties": {
+            "crop_mode": {
+              "const": "custom"
+            }
+          },
+          "required": [
+            "custom_x1",
+            "custom_y1",
+            "custom_x2",
+            "custom_y2",
+            "crop_mode"
+          ]
+        },
+        {
+          "properties": {
+            "crop_mode": {
+              "const": "circle"
+            }
+          },
+          "required": [
+            "crop_mode"
+          ]
+        }
+      ],
+      "properties": {
+        "crop_height": {
+          "description": "directional 模式下，crop_height 表示裁剪后图像的目标高度，单位为 px，且 crop_mode 为 directional 时必须提供 crop_height。crop_mode 为 origin 时，crop_height 表示目标高度，单位为 px。crop_height 为 0 时，高度根据 crop_width 按原图比例自适应。",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "crop_mode": {
+          "default": "directional",
+          "description": "支持 directional、origin、custom、circle 四种模式。directional 根据指定宽度、高度和位置进行方向裁剪；origin 根据指定宽高、偏移量和锚点进行定向裁剪；custom 根据指定左上角和右下角坐标进行自定义裁剪；circle 执行最大内切圆裁剪，无需配置其他参数。裁剪模式决定裁剪行为及所需参数，默认 directional。",
+          "enum": [
+            "directional",
+            "origin",
+            "custom",
+            "circle"
+          ],
+          "type": "string"
+        },
+        "crop_position": {
+          "default": "center",
+          "description": "指定裁剪区域的位置。支持 center、up、down、left、right，分别表示居中、顶部、底部、左侧、右侧，默认 center。",
+          "enum": [
+            "center",
+            "up",
+            "down",
+            "left",
+            "right"
+          ],
+          "type": "string"
+        },
+        "crop_width": {
+          "description": "directional 模式下，crop_width 表示裁剪后图像的目标宽度，单位为 px，且 crop_mode 为 directional 时必须提供 crop_width。crop_mode 为 origin 时，crop_width 表示目标宽度，单位为 px。crop_width 为 0 时，宽度根据 crop_height 按原图比例自适应。directional 模式下，crop_width 与 crop_height 不得同时为 0。",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "custom_x1": {
+          "description": "crop_mode 为 custom 时，custom_x1 表示裁剪区域左上角横坐标（X 轴），单位为 px。",
+          "type": "integer"
+        },
+        "custom_x2": {
+          "description": "crop_mode 为 custom 时，custom_x2 表示裁剪区域右下角横坐标（X 轴），单位为 px。",
+          "type": "integer"
+        },
+        "custom_y1": {
+          "description": "crop_mode 为 custom 时，custom_y1 表示裁剪区域左上角纵坐标（Y 轴），单位为 px。",
+          "type": "integer"
+        },
+        "custom_y2": {
+          "description": "crop_mode 为 custom 时，custom_y2 表示裁剪区域右下角纵坐标（Y 轴），单位为 px。",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "待处理图片的 URL，仅支持处理静图。支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议，支持 .png、.jpg、.jpeg、.webp 格式。建议单张图片不超过 35 MB。crop_mode 为 circle 时，原图最短边不得超过 2048 px。",
+          "format": "media-to-binary",
+          "type": "string",
+          "x-input-conditional-limits": [
+            {
+              "max_short_edge": 2048,
+              "when": {
+                "equals": "circle",
+                "param": "crop_mode"
+              }
+            }
+          ],
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp"
+            ],
+            "max_bytes": 36700160
+          }
+        },
+        "origin_gravity": {
+          "default": "northwest",
+          "description": "指定定向裁剪的锚点（起始点）。支持 northwest、north、northeast、west、center、east、southwest、south、southeast，默认 northwest，表示左上角。",
+          "enum": [
+            "northwest",
+            "north",
+            "northeast",
+            "west",
+            "center",
+            "east",
+            "southwest",
+            "south",
+            "southeast"
+          ],
+          "type": "string"
+        },
+        "origin_x": {
+          "description": "crop_mode 为 origin 时，origin_x 表示相对锚点水平偏移量，单位为 px；正值向右，负值向左。",
+          "type": "integer"
+        },
+        "origin_y": {
+          "description": "crop_mode 为 origin 时，origin_y 表示相对锚点垂直偏移量，单位为 px；正值向下，负值向上。",
+          "type": "integer"
+        },
+        "output_format": {
+          "default": "original",
+          "description": "指定输出图片格式，默认 original，表示保持原图格式。circle 模式下，为确保背景透明，建议输出为 png 或 webp；输出 jpeg 时，非圆形区域填充为白色。",
+          "enum": [
+            "original",
+            "png",
+            "jpeg",
+            "webp"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object",
+      "x-field-relations": [
+        {
+          "left": "custom_x2",
+          "operator": "greater_than",
+          "right": "custom_x1"
+        },
+        {
+          "left": "custom_y2",
+          "operator": "greater_than",
+          "right": "custom_y1"
+        }
+      ]
+    },
+    "name": "crop_image",
+    "output_schema": {
+      "description": "裁剪结果图及常用 metadata。",
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "image_format": {
+          "description": "生成图像的格式。",
+          "type": "string"
+        },
+        "image_height": {
+          "description": "生成图像的高度，单位为 px。",
+          "type": "integer"
+        },
+        "image_size": {
+          "description": "生成图像的大小，单位为字节。",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "处理后图片的下载地址，有效期为 24 小时，请及时保存产物。",
+          "format": "media-url",
+          "type": "string",
+          "x-source-type": "imagex_uri"
+        },
+        "image_width": {
+          "description": "生成图像的宽度，单位为 px。",
+          "type": "integer"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

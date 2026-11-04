@@ -3,5 +3,225 @@
   "tool": "erase-image",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "可按不同场景控制自动检测并擦除图片中的文字或常见图标，擦除后的区域通过智能填充技术进行修复，修复后的区域与背景自然融合。",
+    "input_schema": {
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "standard_scene": {
+                "const": "selected_area_erase"
+              },
+              "tool_version": {
+                "const": "standard"
+              }
+            },
+            "required": [
+              "standard_scene",
+              "tool_version"
+            ]
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "selected_area"
+                ]
+              },
+              {
+                "required": [
+                  "mask_url"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "image_url": {
+          "description": "待处理图像的 URL；图像来源支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；输入图像分辨率不得小于 10x10 像素，且不得超过 2560x1440 像素，顺序为宽x高；单张输入图片大小不得超过 10 MB；输入图片仅支持 .png、.jpg、.jpeg、.webp、.tiff、.bmp和.heic 格式。",
+          "format": "media-to-url",
+          "type": "string",
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp",
+              "tiff",
+              "bmp",
+              "heic"
+            ],
+            "max_bytes": 10485760,
+            "max_height": 1440,
+            "max_width": 2560,
+            "min_height": 10,
+            "min_width": 10
+          }
+        },
+        "mask_url": {
+          "description": "遮罩图片 URL。通过上传一张黑白遮罩图，可以指定需要擦除的任意形状区域。仅当 standard_scene 为 selected_area_erase 时生效。遮罩图要求如下：图像来源：支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议。分辨率要求：必须与输入图像 image_url 的分辨率一致。如果同时传入 selected_area，则擦除两个参数指定区域的并集。",
+          "format": "media-to-url",
+          "type": "string"
+        },
+        "output_format": {
+          "default": "webp",
+          "description": "输出图片的格式，支持 webp、png 和 jpeg；默认 webp。",
+          "enum": [
+            "png",
+            "jpeg",
+            "webp"
+          ],
+          "type": "string"
+        },
+        "selected_area": {
+          "description": "指定擦除区域（矩形框）。仅当 standard_scene 为 selected_area_erase 时生效。坐标系以输入图像的左上角为原点，宽度和高度均归一化为 [0,1]。例如，(0.5, 0.5) 代表图像中心点。如果同时传入 mask_url，则擦除两个参数指定区域的并集。",
+          "properties": {
+            "bottom_right_x": {
+              "description": "矩形框右下角的 X 坐标（横向位置）。该值必须大于 top_left_x。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "bottom_right_y": {
+              "description": "矩形框右下角的 Y 坐标（纵向位置）。该值必须大于 top_left_y，取值范围 [0, 1]。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "top_left_x": {
+              "description": "矩形框左上角的 X 坐标（横向位置）。该值为相对于图片总宽度的比例。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "top_left_y": {
+              "description": "矩形框左上角的 Y 坐标（纵向位置）。该值为相对于图片总高度的比例。",
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "required": [
+            "top_left_x",
+            "top_left_y",
+            "bottom_right_x",
+            "bottom_right_y"
+          ],
+          "type": "object",
+          "x-field-relations": [
+            {
+              "left": "bottom_right_x",
+              "operator": "greater_than",
+              "right": "top_left_x"
+            },
+            {
+              "left": "bottom_right_y",
+              "operator": "greater_than",
+              "right": "top_left_y"
+            }
+          ]
+        },
+        "standard_erase_text": {
+          "description": "standard_erase_text 指定需要擦除的文字内容；仅当 standard_scene 为 full_screen_text_erase 时生效；不提供 standard_erase_text 时会擦除识别到的所有文字。",
+          "type": "string"
+        },
+        "standard_scene": {
+          "default": "full_screen_text_erase",
+          "description": "标准版擦除场景，仅当 tool_version 为 standard 时生效。默认值为 full_screen_text_erase。full_screen_text_erase：全屏文字擦除。可通过 standard_erase_text 字段指定要擦除的文字，不指定则默认擦除所有文字内容。full_screen_icon_erase：全屏图标擦除。selected_area_erase：指定区域擦除。使用此场景时，您必须至少提供 selected_area（矩形坐标）或 mask_url（遮罩图）中的一个参数来定义擦除范围。如果同时提供了这两个参数，系统将擦除它们所定义区域的并集。",
+          "enum": [
+            "full_screen_text_erase",
+            "full_screen_icon_erase",
+            "selected_area_erase"
+          ],
+          "type": "string"
+        },
+        "tool_version": {
+          "default": "standard",
+          "description": "图像擦除修复选用的模型版本；当前仅支持 standard（标准版）；standard 标准版适用于简单、明确的擦除任务。",
+          "enum": [
+            "standard"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object"
+    },
+    "name": "erase_image",
+    "output_schema": {
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "image_format": {
+          "description": "生成图像的格式。",
+          "type": "string"
+        },
+        "image_height": {
+          "description": "生成图像的高度，单位为像素（px）。",
+          "type": "integer"
+        },
+        "image_size": {
+          "description": "生成图像的大小，单位为字节。",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "擦除修复后的图片下载 URL，有效期为 24 小时，必须及时保存对应的产物。",
+          "format": "media-url",
+          "type": "string",
+          "x-source-type": "imagex_uri"
+        },
+        "image_width": {
+          "description": "生成图像的宽度，单位为像素（px）。",
+          "type": "integer"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

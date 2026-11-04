@@ -3,5 +3,170 @@
   "tool": "face-blur-image",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "自动检测图片中的所有人脸区域并进行马赛克处理，用于一键保护图片中的人脸隐私。支持社交平台内容审核、街景或监控画面脱敏、新闻媒体素材处理以及 AI 训练数据集脱敏等批量人脸隐私保护场景。",
+    "input_schema": {
+      "description": "提交一张公网可访问图片 Url，自动检测并对图中所有人脸做马赛克打码；可选配置打码形状、像素格大小、检测置信度阈值与输出格式。 可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "blur_shape": {
+          "default": "circle",
+          "description": "人脸模糊区域的形状，支持 circle 或 rectangle：circle 表示圆形，rectangle 表示矩形；默认 circle。",
+          "enum": [
+            "circle",
+            "rectangle"
+          ],
+          "type": "string"
+        },
+        "face_detect_thresh": {
+          "default": 0.9,
+          "description": "人脸检测置信度阈值必须大于 0 且小于 1；越高过滤越严格，过低可能误判非人脸区域，过高可能漏检人脸；默认 0.9。",
+          "exclusiveMaximum": 1,
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "image_url": {
+          "description": "待打码的图像 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；仅支持 .png、.jpg、.jpeg、.webp、.avif 格式，不支持动图。建议图像文件大小不超过 35 MB；图片文件过大可能导致处理失败；图片宽度和高度的乘积不得超过 4 亿像素。",
+          "format": "media-to-url",
+          "type": "string",
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp",
+              "avif"
+            ],
+            "max_bytes": 36700160,
+            "max_pixels": 400000000
+          }
+        },
+        "mosaic_step": {
+          "default": 12,
+          "description": "马赛克像素格大小，单位 px，必须为正整数；越大，马赛克颗粒越大且脱敏强度越高；建议范围为 [5, 100]；默认 12。",
+          "maximum": 100,
+          "minimum": 5,
+          "type": "integer"
+        },
+        "output_format": {
+          "default": "webp",
+          "description": "输出图片格式，支持 png、jpeg 或 webp；默认 webp。",
+          "enum": [
+            "png",
+            "jpeg",
+            "webp"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object"
+    },
+    "name": "face_blur_image",
+    "output_schema": {
+      "description": "人脸打码结果图、常用 metadata 及检测到的人脸数量与坐标。返回的下载 Url 有效期 24 小时。",
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "face_count": {
+          "description": "检测到并已打码的人脸数量；为 0 表示未检测到人脸且原图未做处理；大于 0 表示已对对应数量的人脸完成打码。",
+          "type": "integer"
+        },
+        "face_location": {
+          "description": "每张检测出的人脸信息对象数组；未检测到人脸时为空数组。",
+          "items": {
+            "properties": {
+              "bottom_right_x": {
+                "description": "人脸检测框右下角横坐标，单位 px。",
+                "type": "integer"
+              },
+              "bottom_right_y": {
+                "description": "人脸检测框右下角纵坐标，单位 px。",
+                "type": "integer"
+              },
+              "confidence": {
+                "description": "人脸检测置信度，必须大于 0 且小于 1。",
+                "type": "number"
+              },
+              "top_left_x": {
+                "description": "人脸检测框左上角横坐标，单位 px。",
+                "type": "integer"
+              },
+              "top_left_y": {
+                "description": "人脸检测框左上角纵坐标，单位 px。",
+                "type": "integer"
+              }
+            },
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "image_format": {
+          "description": "处理后图片格式。",
+          "type": "string"
+        },
+        "image_height": {
+          "description": "处理后图片高度，单位 px。",
+          "type": "integer"
+        },
+        "image_size": {
+          "description": "处理后图片大小，单位字节。",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "人脸打码后的图片文件下载地址，有效期为 24 小时，务必及时保存对应的产物。",
+          "format": "media-url",
+          "type": "string",
+          "x-source-type": "imagex_uri"
+        },
+        "image_width": {
+          "description": "处理后图片宽度，单位 px。",
+          "type": "integer"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

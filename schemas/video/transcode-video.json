@@ -3,5 +3,330 @@
   "tool": "transcode-video",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "视频转码将视频码流转换为另一视频码流，可涉及编码格式、分辨率、码率、I 帧间隔和封装格式转换，用于适应不同业务场景、播放终端和网络环境。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "audio": {
+          "description": "不传 audio 时，音频使用 aac 编码，其他参数跟随源文件。",
+          "properties": {
+            "bitrate_kbps": {
+              "default": 128,
+              "description": "音频码率单位 Kbps，范围 [10, 500]，默认 128；不设置时跟随原始音频码率。",
+              "maximum": 500,
+              "minimum": 10,
+              "type": "integer",
+              "x-description-en": "The audio bitrate, in Kbps. The value ranges from 10 to 500, with a default of 128. If this parameter is not set, the output audio bitrate matches the source audio."
+            },
+            "bitrate_mode": {
+              "default": "cbr",
+              "description": "cae 仅在 audio.codec=aac 时支持，按内容复杂度调整瞬时码率并使平均码率接近 bitrate_kbps。cbr 是默认恒定码率模式，仅在 video.codec=h264 时支持，用于带宽稳定性要求高的流式传输。",
+              "enum": [
+                "cbr",
+                "cae"
+              ],
+              "type": "string",
+              "x-description-en": "The audio bitrate control mode. It can be set to `cbr`, the default constant bitrate mode that is supported only when `video.codec` is `h264` and keeps every second of the audio stream strictly at the bitrate set by `bitrate_kbps`, making the file size precisely predictable and suitable for streaming scenarios with high bandwidth-stability requirements, or to `cae`, an adaptive bitrate mode."
+            },
+            "channels": {
+              "default": 2,
+              "description": "音频声道数支持 1（单声道）和 2（双声道），默认是 2。",
+              "enum": [
+                1,
+                2
+              ],
+              "type": "integer",
+              "x-description-en": "The number of audio channels. It can be set to `1` for mono or `2` for stereo (used by default). This field is optional."
+            },
+            "codec": {
+              "default": "aac",
+              "description": "音频编码当前仅支持 aac，默认也是 aac。",
+              "enum": [
+                "aac"
+              ],
+              "type": "string",
+              "x-description-en": "The audio codec. Currently only `aac` is supported, and it is used by default."
+            },
+            "sample_rate": {
+              "default": 44100,
+              "description": "aac 支持采样率 8000、11025、12000、16000、22050、24000、32000、44100、48000、64000、88200、96000 Hz，默认 44100 Hz。",
+              "enum": [
+                8000,
+                11025,
+                12000,
+                16000,
+                22050,
+                24000,
+                32000,
+                44100,
+                48000,
+                64000,
+                88200,
+                96000
+              ],
+              "type": "integer",
+              "x-description-en": "The audio sample rate, in Hz. Defaults to `44100`. When the audio codec is `aac`, the supported sample rates are `8000`, `11025`, `12000`, `16000`, `22050`, `24000`, `32000`, `44100`, `48000`, `64000`, `88200`, and `96000`."
+            },
+            "volume_integrated_loudness": {
+              "default": -12,
+              "description": "响度值设置，用于在音量均衡模式下调整音频的整体响度水平。范围为 [-70, -5]，默认值为 -12。当 volume_method 为 2Pass 时，该参数必填。",
+              "maximum": -5,
+              "minimum": -70,
+              "type": "number",
+              "x-description-en": "Optional. Specifies the target integrated loudness in LUFS, which is used to set the overall perceived volume of the audio. The value range is `[-70, -5]`, with a default of `-12`. Required when `volume_method` is `2Pass`."
+            },
+            "volume_loudness_range": {
+              "default": 7,
+              "description": "响度范围单位 LU，范围 [1, 20]，默认 7；volume_method=2Pass 时生效。",
+              "maximum": 20,
+              "minimum": 1,
+              "type": "number",
+              "x-description-en": "Optional. Specifies the loudness range (dynamic range) in LU, which is used to adjust the difference between the loudest and quietest parts of the audio. The value range is `[1, 20]`, with a default of `7`. Effective when `volume_method` is `2Pass`."
+            },
+            "volume_method": {
+              "description": "volume_method=2Pass 可启用两阶段响度分析与处理，使三个响度参数生效；不设置时不处理音量。",
+              "enum": [
+                "2Pass"
+              ],
+              "type": "string",
+              "x-description-en": "Optional. Controls loudness normalization. Set to `2Pass` to enable two-pass loudness analysis and processing, in which case `volume_integrated_loudness`, `volume_true_peak`, and `volume_loudness_range` take effect. If not set, the volume is not processed."
+            },
+            "volume_true_peak": {
+              "default": 0,
+              "description": "音量峰值，用于在音量均衡模式下设置音频的最大峰值。范围为 [-9, 0]，默认值为 0。当 volume_method 为 2Pass 时，该参数必填。",
+              "maximum": 0,
+              "minimum": -9,
+              "type": "number",
+              "x-description-en": "Optional. Specifies the true peak level in dBTP, which is used to set the maximum limit of the audio signal to prevent clipping distortion. The value range is `[-9, 0]`, with a default of `0`. Required when `volume_method` is `2Pass`."
+            }
+          },
+          "required": [
+            "codec",
+            "sample_rate",
+            "bitrate_mode",
+            "bitrate_kbps"
+          ],
+          "type": "object",
+          "x-description-en": "Optional. Configures the audio transcoding parameters. If this object is not provided, audio is transcoded with default parameters (codec aac, and other parameters match those of the source file).",
+          "x-skip-default-populate-on-missing-object": true
+        },
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "container_format": {
+          "default": "MP4",
+          "description": "输出封装格式支持 MP4、FLV、MPEGTS，默认是 MP4。",
+          "enum": [
+            "MP4",
+            "FLV",
+            "MPEGTS"
+          ],
+          "type": "string",
+          "x-description-en": "Required. Specifies the container format of the output video. Can be set to `MP4` (the default), `FLV`, or `MPEGTS`."
+        },
+        "metadata_add_tags": {
+          "description": "新增元信息标签与保留标签同名时，新设置覆盖源文件值。metadata_add_tags 对 MPEGTS 封装格式无效。",
+          "items": {
+            "properties": {
+              "key": {
+                "description": "标签键。",
+                "type": "string",
+                "x-description-en": "The key of the metadata tag."
+              },
+              "value": {
+                "description": "标签值。",
+                "type": "string",
+                "x-description-en": "The value of the metadata tag."
+              }
+            },
+            "type": "object"
+          },
+          "type": "array",
+          "x-description-en": "Optional. The list of metadata tags to add to the output video, provided as an Array of Objects. Each tag consists of a key and a value. If an added tag has the same name as a kept tag, the setting here overrides the source file's value. This parameter does not take effect when the container_format is set to MPEGTS."
+        },
+        "metadata_keep_tags": {
+          "description": "可指定从源视频保留的元信息标签键；默认转码会丢弃大部分元信息。metadata_keep_tags 对 MPEGTS 封装格式无效。",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-description-en": "The metadata tags to keep from the source video, provided as an Array of Strings. By default, transcoding discards most metadata such as title and artist, so use this parameter to specify the tag keys to keep. This parameter is optional and does not take effect when container_format is set to MPEGTS."
+        },
+        "video": {
+          "allOf": [
+            {
+              "if": {
+                "required": [
+                  "fps_mode"
+                ]
+              },
+              "then": {
+                "required": [
+                  "fps"
+                ]
+              }
+            }
+          ],
+          "description": "视频参数，必填",
+          "properties": {
+            "bitrate_crf": {
+              "default": 25,
+              "description": "bitrate_crf 仅在 bitrate_mode=crf 时生效；值越小画质越高、体积越大，0 表示无损。bitrate_crf 范围 [0, 51]。",
+              "maximum": 51,
+              "minimum": 0,
+              "type": "number",
+              "x-description-en": "The CRF (Constant Rate Factor) parameter is the primary quality controller and is effective only when bitrate_mode is crf. Its value ranges from 0 to 51, with a default of 25. A smaller value produces higher quality and a larger file, and 0 means lossless. This parameter is optional."
+            },
+            "bitrate_kbps": {
+              "default": 2000,
+              "description": "video.bitrate_kbps 在 crf、abr、cbr 模式下分别表示最大码率限制、平均码率目标、恒定码率目标。",
+              "maximum": 50000,
+              "minimum": 10,
+              "type": "integer",
+              "x-description-en": "The target video bitrate, in Kbps, ranging from 10 to 50000 with a default of 2000. Its exact effect depends on the bitrate mode: in crf mode it is the maximum bitrate limit, in abr mode it is the average bitrate target, and in cbr mode it is the constant bitrate target."
+            },
+            "bitrate_mode": {
+              "default": "crf",
+              "description": "crf 推荐用于大多数场景，尽量保持 bitrate_crf 指定的视觉质量，并以 bitrate_kbps 限制瞬时码率。abr 调整码率使整体平均码率接近 bitrate_kbps，适合将文件大小控制在特定范围。cbr 尝试让视频流每秒严格保持 bitrate_kbps 设定码率，适合要求网络传输稳定的流媒体场景。",
+              "enum": [
+                "crf",
+                "abr",
+                "cbr"
+              ],
+              "type": "string",
+              "x-description-en": "The bitrate control mode, which defaults to crf. In crf (Constant Rate Factor) mode, the system tries to keep the overall visual quality at your target level, where a smaller value yields higher quality, while ensuring the instantaneous bitrate does not exceed the bitrate limit. This mode offers the best balance between quality and file size and is recommended for most scenarios."
+            },
+            "codec": {
+              "default": "h264",
+              "description": "视频编码格式支持 h264 和 h265，默认是 h264。",
+              "enum": [
+                "h264",
+                "h265"
+              ],
+              "type": "string",
+              "x-description-en": "The video codec, which defaults to h264 and can be set to h264 or h265."
+            },
+            "fps": {
+              "description": "fps 范围 [1, 240]；vfr 下是最大帧率，cfr 下是恒定帧率。",
+              "maximum": 240,
+              "minimum": 1,
+              "type": "integer",
+              "x-description-en": "The target frame rate, with a supported value ranging from 1 to 240. Setting this parameter activates the fps_mode logic: in vfr mode it represents the maximum frame rate, while in cfr mode it represents the constant frame rate. If not set, the source's frame rate is used. This parameter is optional."
+            },
+            "fps_mode": {
+              "default": "vfr",
+              "description": "只有设置 fps 后 fps_mode 才生效；未提供 fps 时遵循原视频帧率并忽略 fps_mode。cfr 将 fps 作为强制恒定输出帧率。vfr 将 fps 作为最高帧率；源帧率较低时保留，较高时降低到 fps。",
+              "enum": [
+                "vfr",
+                "cfr"
+              ],
+              "type": "string",
+              "x-description-en": "Controls the frame-rate mode for the transcoded video and is optional. It takes effect only after you set the fps parameter; if you do not provide fps, the source frame rate is used and this setting is ignored. The default is vfr, a variable frame-rate mode in which the fps value acts as the maximum frame-rate limit, so when the source frame rate is lower than your fps value the source rate is kept."
+            },
+            "is_hdr_to_sdr": {
+              "default": true,
+              "description": "true 将 HDR 转换为 SDR；false 保留 HDR。",
+              "type": "boolean",
+              "x-description-en": "Optional. Whether to convert HDR (High Dynamic Range) video to SDR (Standard Dynamic Range) video. Defaults to `true`; set to `false` to keep HDR."
+            },
+            "scale_height": {
+              "description": "scale_height 单位为 px，范围 [0, 4320]，仅在 scale_type=2 时生效；只传宽或高之一时另一边按比例缩放。",
+              "maximum": 4320,
+              "minimum": 0,
+              "type": "integer",
+              "x-description-en": "The target height, in px. The value range is [0, 4320]. Effective only when scale_type is 2 (width/height limit mode). If only one of scale_width or scale_height is provided, the other side scales proportionally. This parameter is optional."
+            },
+            "scale_long": {
+              "description": "scale_long 单位为 px，范围 [0, 4320]，仅在 scale_type=1 时生效；只传短边或长边之一时另一边按比例缩放。",
+              "maximum": 4320,
+              "minimum": 0,
+              "type": "integer",
+              "x-description-en": "The target long side, in px. The value range is [0, 4320]. Effective only when scale_type is 1 (long/short-side limit mode). If only one of scale_short or scale_long is provided, the other side scales proportionally. This parameter is optional."
+            },
+            "scale_mode": {
+              "default": 0,
+              "description": "scale_mode 仅在 scale_type 为 1 或 2 时生效。0 不上采：源片大于目标时缩小，小于目标时保持原尺寸。1 强制拉伸到目标宽高，可能导致画面变形。2 等比缩放到目标框内并用黑边填充不足部分。",
+              "enum": [
+                0,
+                1,
+                2
+              ],
+              "type": "integer",
+              "x-description-en": "The fill and stretch strategy. It takes effect only when scale_type is 1 or 2, and is used to handle mismatches between your target dimensions and the source aspect ratio. Set it to 0 for no upsampling, where the video is shrunk if the source is larger than the target and the original size is kept if it is smaller, or to 1 for stretch upsampling, which force-stretches to the target width and height. Defaults to 0. This parameter is optional."
+            },
+            "scale_short": {
+              "description": "scale_short 单位为 px，范围 [0, 4320]，仅在 scale_type=1 时生效；只传短边或长边之一时另一边按比例缩放。",
+              "maximum": 4320,
+              "minimum": 0,
+              "type": "integer",
+              "x-description-en": "The target length of the short side of the video, in px, with a value range of [0, 4320]. It takes effect only when scale_type is set to 1 (long/short-side limit mode). If only one of scale_short or scale_long is provided, the other side scales proportionally. This field is optional."
+            },
+            "scale_type": {
+              "default": 0,
+              "description": "scale_type=0 跟随片源且不缩放，相关尺寸参数无效，最高支持 8K。scale_type=1 激活 scale_short 和 scale_long，另一边按原比例缩放，最高支持 4K。scale_type=2 激活 scale_width 和 scale_height，另一边按原比例缩放，最高支持 4K。视频缩放模式默认是 0。",
+              "enum": [
+                0,
+                1,
+                2
+              ],
+              "type": "integer",
+              "x-description-en": "The video scaling mode, which defaults to 0. It can be set to 0 for follow-source mode, where no scaling is performed and scale_mode, scale_width, scale_height, scale_short, and scale_long are all ignored; this mode supports up to 8K resolution. It can be set to 1 for long/short-side limit mode, which activates scale_short and scale_long so you can set the long or short side of the output while the other side scales proportionally. This field is optional."
+            },
+            "scale_width": {
+              "description": "scale_width 单位为 px，范围 [0, 4320]，仅在 scale_type=2 时生效；只传宽或高之一时另一边按比例缩放。",
+              "maximum": 4320,
+              "minimum": 0,
+              "type": "integer",
+              "x-description-en": "The target width of the video, in px, with a value range of [0, 4320]. It takes effect only when scale_type is set to 2 (width/height limit mode). If only one of scale_width or scale_height is provided, the other side scales proportionally. This field is optional."
+            }
+          },
+          "required": [
+            "codec",
+            "bitrate_mode",
+            "bitrate_kbps"
+          ],
+          "type": "object",
+          "x-description-en": "Video transcoding parameter configuration. This parameter is required."
+        },
+        "video_url": {
+          "description": "待转码视频支持 mp4、mov、mkv、flv、ts、avi、wmv 等主流视频格式；支持本地文件路径和公网 HTTP/HTTPS URL 两种来源协议。",
+          "format": "media-to-vid",
+          "type": "string",
+          "x-description-en": "The URL of the video to be transcoded. This parameter is required. Only publicly accessible HTTP/HTTPS URLs are supported. Supported formats are mainstream video formats such as mp4, flv, ts, avi, mov, wmv, mkv."
+        }
+      },
+      "required": [
+        "video_url",
+        "container_format",
+        "video"
+      ],
+      "type": "object"
+    },
+    "name": "transcode_video",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

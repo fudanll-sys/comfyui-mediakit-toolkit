@@ -3,5 +3,70 @@
   "tool": "mix-audio",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "将多个音频文件同时混合为一个新的音频文件，适合把人声、背景音乐和音效叠加播放；输出时长以最长的输入音频为准。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "audio_urls": {
+          "description": "待混合的音频列表，必须提供 1 到 100 个音频；单个输入文件大小建议不超过 10 GB；支持 mp3、wav、flac 等主流音频格式；支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议。",
+          "items": {
+            "description": "待混合的输入音频。支持http://xxx或https://xxx格式 URL，支持 mp3、wav、flac 等格式",
+            "format": "media-to-url",
+            "type": "string",
+            "x-description-en": "Only publicly accessible HTTP or HTTPS URLs are supported. Common supported input audio formats include mp3, wav, and flac. A single input file is recommended not to exceed 10 GB."
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "type": "array",
+          "x-description-en": "The list of audio file URLs to be mixed. This field is required and must contain at least 1 item and no more than 100 items."
+        },
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "format": {
+          "default": "m4a",
+          "description": "输出音频格式，可选；支持 mp3、m4a、ogg、flac、wav，默认 m4a。",
+          "enum": [
+            "mp3",
+            "m4a",
+            "ogg",
+            "flac",
+            "wav"
+          ],
+          "type": "string",
+          "x-description-en": "Specifies the output audio format. Optional; defaults to m4a. Supports mp3, m4a, ogg, flac, and wav."
+        }
+      },
+      "required": [
+        "audio_urls"
+      ],
+      "type": "object"
+    },
+    "name": "mix_audio",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

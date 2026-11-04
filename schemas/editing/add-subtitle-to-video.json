@@ -3,5 +3,160 @@
   "tool": "add-subtitle-to-video",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "将字幕文件或文本内容按自定义样式压制到视频画面中，生成带内嵌字幕的新视频。",
+    "input_schema": {
+      "anyOf": [
+        {
+          "required": [
+            "subtitle_url"
+          ]
+        },
+        {
+          "required": [
+            "subtitles"
+          ]
+        }
+      ],
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "subtitle_font_color": {
+          "default": "#FFFFFFFF",
+          "description": "subtitle_font_color 非必填，字幕字体颜色采用 RGBA 格式，默认 #FFFFFFFF，表示不透明白色。",
+          "type": "string",
+          "x-description-en": "The subtitle font color, specified in RGBA format. This setting is optional; the default is #FFFFFFFF, which is opaque white."
+        },
+        "subtitle_font_size": {
+          "default": 50,
+          "description": "subtitle_font_size 非必填，字幕字体大小单位为 px，默认 50 px。字号不得超过所选位置预设的最大渲染高度，即视频原始高度 × height 百分比（例如 height 为 10% 时，最大字号为视频高度的 10%）；同时单行字数 × 字号不得超过所选位置预设的 width（视频原始宽度 × width 百分比，例如 80%）。",
+          "minimum": 1,
+          "type": "integer",
+          "x-description-en": "The subtitle font size, measured in pixels (px). It defaults to 50. This parameter is optional."
+        },
+        "subtitle_font_type": {
+          "default": "sy_black",
+          "description": "字幕字体 ID。默认值为 sy_black (思源黑体)。",
+          "enum": [
+            "sy_black",
+            "pm_zhengdao",
+            "zhanku_kuaile"
+          ],
+          "type": "string",
+          "x-site-overrides": {
+            "byteplus": {
+              "default": "inter",
+              "enum": [
+                "inter",
+                "montserrat",
+                "oppo_sans",
+                "roboto",
+                "source_han_serif"
+              ]
+            }
+          }
+        },
+        "subtitle_pos_preset": {
+          "default": "bottom_center",
+          "description": "subtitle_pos_preset 非必填，通过预设值快速将字幕放到画面常用位置；支持 bottom_center（底部居中，默认，推荐横屏使用）、top_center（顶部居中）、center（画面正中央）、lower_third（偏下三分之一处，推荐竖屏使用）。用户未指定位置时：横屏使用 bottom_center，竖屏使用 lower_third。各预设对应的字幕渲染区域为：top_center 为 width 80%、height 10%、pos_x 10%、pos_y 5%；center 为 width 80%、height 15%、pos_x 10%、pos_y 42.5%；lower_third 为 width 80%、height 10%、pos_x 10%、pos_y 70%；bottom_center 为 width 80%、height 10%、pos_x 10%、pos_y 85%。其中 height 为相对视频原始高度的字体渲染最大高度，width 为相对视频原始宽度的字幕区域最大宽度。若当前没有视频宽高信息，可先探测视频元信息获取宽高后再选择位置与字号。若成片用于短视频或漫剧平台，设置位置前应向用户确认，并避开对应平台的操作栏、进度条和互动控件，避免字幕被遮挡。",
+          "enum": [
+            "bottom_center",
+            "top_center",
+            "center",
+            "lower_third"
+          ],
+          "type": "string",
+          "x-description-en": "The preset subtitle position. This parameter is optional. It defaults to bottom_center and can also be set to top_center, center, or lower_third."
+        },
+        "subtitle_text_effect": {
+          "description": "花字效果的资源 ID。默认无花字效果。设置本参数后，subtitle_font_color 参数将不生效。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "subtitle_url": {
+          "description": "subtitle_url 非必填，用于提供字幕文件 URL，支持本地文件路径和公网 HTTP/HTTPS URL，支持 SRT、VTT、ASS 等常见字幕格式；subtitle_url 与 subtitles 同时存在时，优先使用 subtitle_url 的内容。",
+          "format": "media-to-url",
+          "type": "string",
+          "x-description-en": "The URL of the subtitle file. Only publicly accessible HTTP/HTTPS URLs are supported, and common supported subtitle formats include SRT, VTT, and ASS. This parameter is optional. When both subtitle_url and subtitles are present, the subtitle_url content takes priority."
+        },
+        "subtitles": {
+          "description": "subtitles 非必填，是由多个字幕对象组成的字幕内容列表；每个对象包含字幕文本、开始时间和结束时间。",
+          "items": {
+            "properties": {
+              "end_time": {
+                "description": "该条字幕结束显示的时间，单位为秒。",
+                "minimum": 0,
+                "type": "number",
+                "x-description-en": "The time when the subtitle disappears, measured in seconds. This value is required."
+              },
+              "start_time": {
+                "description": "该条字幕开始显示的时间，单位为秒。",
+                "minimum": 0,
+                "type": "number",
+                "x-description-en": "The time when the subtitle appears, measured in seconds. This field is required."
+              },
+              "subtitle_text": {
+                "description": "单条字幕的文本内容。",
+                "type": "string",
+                "x-description-en": "The text content of a single subtitle. This field is required."
+              }
+            },
+            "required": [
+              "subtitle_text",
+              "start_time",
+              "end_time"
+            ],
+            "type": "object",
+            "x-field-relations": [
+              {
+                "left": "end_time",
+                "operator": "greater_than",
+                "right": "start_time"
+              }
+            ]
+          },
+          "minItems": 1,
+          "type": "array",
+          "x-description-en": "A list of subtitle objects, each containing subtitle text and start and end times. This parameter is optional."
+        },
+        "video_url": {
+          "description": "video_url 是待添加字幕的视频 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议，支持 mp4、flv、ts、avi、mov、wmv、mkv 等主流视频格式；最高支持 4K（3840×2160）分辨率；建议输入视频文件大小不超过 10 GB。",
+          "format": "media-to-url",
+          "type": "string",
+          "x-description-en": "The URL of the video to which subtitles are added. Only publicly accessible HTTP/HTTPS URLs are supported as the video file source. Common supported video formats include mp4, flv, ts, avi, mov, wmv, and mkv. Input resolution up to 4K (3840×2160) is supported. It is recommended that one input video file not exceed 10 GB. This field is required."
+        }
+      },
+      "required": [
+        "video_url"
+      ],
+      "type": "object"
+    },
+    "name": "add_subtitle_to_video",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

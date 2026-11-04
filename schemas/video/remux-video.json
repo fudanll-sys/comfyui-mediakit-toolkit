@@ -3,5 +3,90 @@
   "tool": "remux-video",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "视频转封装用于调整视频容器格式，仅修改容器格式，不会重新编解码音视频码流，适用于点播分发适配、流媒体切片打包与多端兼容等场景。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "client_token": {
+          "description": "用户请求凭证，用于幂等控制；大小写敏感，长度不超过 64 个 ASCII 可打印字符。 用于控制异步任务幂等；同步任务不支持幂等校验。异步任务首次提交时默认不传，服务端仍会对相同核心参数执行 24 小时默认幂等。用户明确指定 token 时原样使用。因网络超时、响应丢失等原因重试同一次提交时，原请求有 token 则复用原值，原请求未传则继续不传。任务已有结果后，用户要求“结果不对，重试”“重新跑一次”或“重新发起任务”时，必须生成并传递新的 token，避免返回原任务。新对话中用户要求“重新发起任务”时，若当前上下文具备完整任务参数，直接生成新 token 并提交；若参数不足，先向用户澄清，补齐后再使用新 token 发起，不得直接省略 token。新任务后续发生提交重试时复用该新 token。已有 task_id 且任务尚未完成时，只查询原任务，不得重新提交。CLI runtime 不判断用户意图，也不自动生成 token。",
+          "type": "string"
+        },
+        "container_format": {
+          "default": "MP4",
+          "description": "目标封装格式，支持 MP4、FLV、MPEGTS，默认值为 MP4。",
+          "enum": [
+            "MP4",
+            "FLV",
+            "MPEGTS"
+          ],
+          "type": "string",
+          "x-description-en": "This parameter specifies the target container format. It is required, supports MP4, FLV, and MPEGTS, and defaults to MP4."
+        },
+        "metadata_add_tags": {
+          "description": "可选填写需要为输出视频新增的元信息标签列表，每个标签由 key 和 value 组成；对 MPEGTS 封装格式无效；新增标签与被保留标签同名时，会覆盖源文件的值。",
+          "items": {
+            "properties": {
+              "key": {
+                "description": "标签键；每个标签由 key 和 value 组成。",
+                "type": "string",
+                "x-description-en": "The key of a metadata tag to add."
+              },
+              "value": {
+                "description": "标签值；每个标签由 key 和 value 组成。",
+                "type": "string",
+                "x-description-en": "The value of a metadata tag to add."
+              }
+            },
+            "type": "object"
+          },
+          "type": "array",
+          "x-description-en": "This parameter is optional and is an Array of Objects that lists metadata tags to add to the output video. If an added tag has the same name as a kept tag, it overrides the source file's value. It does not take effect when container_format is MPEGTS."
+        },
+        "metadata_keep_tags": {
+          "description": "可选填写需要从源视频保留的元信息标签列表，用于指定需要保留的标签键（Key）；默认情况下转码过程会丢弃大部分元信息（如标题、艺术家等）；对 MPEGTS 封装格式无效。",
+          "items": {
+            "type": "string"
+          },
+          "type": "array",
+          "x-description-en": "Optional. A list of metadata tag keys to keep from the source video. By default, transcoding discards most metadata, such as title and artist, so use this field to specify the tag keys to keep. Provide the values as an Array of Strings. This field does not take effect when container_format is MPEGTS."
+        },
+        "video_url": {
+          "description": "待处理视频的 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议。",
+          "format": "media-to-vid",
+          "type": "string",
+          "x-description-en": "video_url is required and is the URL of the video to be transcoded. Supported input formats include mainstream video formats such as mp4, flv, ts, avi, mov, wmv, and mkv. Only publicly accessible HTTP/HTTPS URLs are supported as file sources."
+        }
+      },
+      "required": [
+        "video_url",
+        "container_format"
+      ],
+      "type": "object"
+    },
+    "name": "remux_video",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

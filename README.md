@@ -12,7 +12,7 @@ MediaKit 云端视频 AI 能力封装为原生 ComfyUI 节点，并在节点内�
 
 ## 当前状态
 
-当前版本为 `0.4.0`，已提供以下节点：
+当前已发布版本为 `0.4.0`；下表包含尚未发布的 P1 开发节点：
 
 | 节点 | 说明 |
 | --- | --- |
@@ -30,14 +30,32 @@ MediaKit 云端视频 AI 能力封装为原生 ComfyUI 节点，并在节点内�
 | `Metadata · 视频元信息` | 探测视频容器、视频流与音频流元信息。 |
 | `Trim · 视频裁剪` | 按时间范围裁剪视频，原生 `VIDEO → VIDEO`。 |
 | `Extract Audio · 提取音频` | 从视频分离音轨，原生 `VIDEO → AUDIO`。 |
+| `Speed · 视频变速` | 调整视频播放速度（0.1～4.0 倍）。 |
+| `Volume · 音量调整` | 调整视频音量倍数或静音。 |
+| `Camera Motion · 镜头运动` | 为视频添加推拉、平移、旋转等镜头运动。 |
+| `Filter · 视频滤镜` | 春日、晚霞、鲜亮、白皙、美食预设滤镜。 |
+| `Flip · 视频翻转` | 水平/垂直翻转视频画面。 |
+| `Rotate · 视频旋转` | 左转 90° / 右转 90° / 旋转 180°。 |
+| `Concat · 视频拼接` | 顺序拼接多个视频（支持过渡效果）。 |
+| `Concat Audio · 音频拼接` | 顺序拼接多个音频。 |
+| `Mix · 混音` | 将多个音频混合为一条音轨。 |
+| `Mux · 音视频合流` | 将视频与音频合流，支持替换/保留原音与音画同步。 |
+| `Subtitle · 视频加字幕` | 将字幕文件或文本内容按自定义样式压制到画面。 |
+| `Stitch · 视频拼合` | 将 2～3 个视频在同一画布左右/上下拼合。 |
+| `Crop · 画面裁剪` | 按指定矩形区域裁剪视频画面。 |
+| `Audio Speed · 音频变速` | 调整音频播放速度（0.1～4.0 倍），原生 `AUDIO → AUDIO`。 |
+| `Audio Trim · 音频裁剪` | 按时间范围裁剪音频，原生 `AUDIO → AUDIO`。 |
+| `Fade Audio · 音频淡入淡出` | 为音频添加淡入与淡出效果，原生 `AUDIO → AUDIO`。 |
+| `Fade · 视频声音淡入淡出` | 为视频中的声音添加淡入与淡出效果。 |
+| `Animated · 提取动图` | 将视频指定时间段提取为 GIF/WebP 动图，原生 `VIDEO → IMAGE`。 |
 
 `Enhance · 视频增强` 不是极速版。独立的极速增强能力尚未接入，未来上线后将使用
 单独的节点名称，避免与当前标准版/专业版混淆。
 
 ### 运行模式
 
-`Trim · 视频裁剪`、`Extract Audio · 提取音频` 和 `Metadata · 视频元信息` 提供
-`run_mode` 参数：
+所有 `MediaKit/Video Editing` 节点和 `Metadata · 视频元信息` 提供 `run_mode`
+参数：
 
 - `auto`（默认）：检测本机 `mediakit-cli` 是否支持该能力的本地模式；支持则本地
   同步执行（免费、不产生云端费用），否则回退云端异步任务。
@@ -45,6 +63,16 @@ MediaKit 云端视频 AI 能力封装为原生 ComfyUI 节点，并在节点内�
 
 插件不会强制选择本地模式：较旧的 CLI 构建可能不支持 `--local`，强制指定会直接
 失败，因此节点只暴露 `auto` 与 `cloud` 两个选项。
+
+### 原生媒体与验证
+
+- P1 多输入使用 ComfyUI V3 Autogrow；连接编号插槽，不能将一条连接当作多个输入。
+- AUDIO 输入为 `waveform [1,C,T]` 和 `sample_rate` 字典，当前接受单批次、单/双声道；内部转为 PCM16 WAV，可能有量化误差，不会误用 VIDEO 返回类型。
+- IMAGE 输出为完整帧批次；动图另有帧时长和原资源地址。
+- 开发验证：在 ComfyUI Python 环境运行 `python scripts/verify_comfy_contracts.py --comfy-root /path/to/ComfyUI` 和 `python -m unittest discover -s tests`。
+- 未在 ComfyUI 环境运行时，媒体往返测试会明确跳过；不能把跳过算作通过。已在隔离 ComfyUI 0.43.0 / 前端 1.57.6 验证三个 P1 示例导入、保存参数展开及本地诊断/视频保存/错误输入队列；尚未验证有效 P1 云端编辑的完整处理链。
+- 前端/队列复现：`python scripts/verify_comfy_runtime.py --url http://127.0.0.1:8197 --browser-executable /path/to/chrome --fixture-file test.mp4 --artifacts-dir /path/to/test-results`，需单独安装 Playwright，且只在隔离的本机 ComfyUI 上运行。脚本不提交有效云端任务。
+- CLI 0.2.2 编辑域仅支持云端；`auto` 回退云端也可能计费。
 
 ### Schema 快照与版本锁定
 
@@ -293,6 +321,93 @@ Scene · 场景切分   （或 Highlight · 高光片段提取 / Metadata · 视
 - `output_format`：`mp3`、`m4a`（默认）、`ogg`、`flac`、`wav`。
 - `run_mode`：`auto`（默认，本地优先）或 `cloud`。
 - 输出：原生 `AUDIO`。
+
+### Speed · 视频变速 / Audio Speed · 音频变速
+
+- `speed`：变速倍速，范围 `0.1～4.0`，默认 `1.0`。
+- 音频节点输出格式：`mp3`、`m4a`（默认）、`ogg`、`flac`、`wav`。
+
+### Volume · 音量调整
+
+- `volume`：音量倍数 `0～4`，默认 `1`；`0` 表示静音。
+- 输出：原生 `VIDEO`。
+
+### Camera Motion · 镜头运动
+
+- `motion_style`：`zoom`（推拉）、`pan-zoom`（平移推拉）、`orbit-360`（环绕）、`bounce`（弹动）。
+- `start_time` / `end_time`：效果时间段（秒）；`end_time=0` 表示到视频结尾。
+
+### Filter · 视频滤镜
+
+- `filter_style`：`spring`（春日）、`sunset`（晚霞）、`vivid`（鲜亮）、`fair_skin`（白皙）、`food`（美食）。
+
+### Flip · 视频翻转
+
+- `is_flip_horizontal` / `is_flip_vertical`：左右 / 上下镜像；至少开启一项。
+
+### Rotate · 视频旋转
+
+- `rotate_direction`：`rotate_left_90`、`rotate_right_90` 或 `rotate_180`。
+
+### Concat · 视频拼接
+
+- `videos`：按编号连接 1～100 个 `video_1`、`video_2` 等 Autogrow 插槽。
+- `transitions`：选择一个转场资源 ID，应用到每个相邻连接点；空表示硬切。
+
+### Concat Audio · 音频拼接
+
+- `audios`：按编号连接 1～100 个 AUDIO 插槽。
+- 输出：原生 `AUDIO`。
+
+### Mix · 混音
+
+- `audios`：按编号连接 1～100 个 AUDIO 插槽。
+- 输出：原生 `AUDIO`。
+
+### Mux · 音视频合流
+
+- `audio`：待合流的音频。
+- `is_audio_reserve`：是否保留原音（默认）或替换音轨。
+- `is_video_audio_sync`：开启音画同步（可选 `sync_method` 与 `sync_mode`）。
+
+### Subtitle · 视频加字幕
+
+- `subtitle_url`：字幕文件路径或 URL（SRT/VTT/ASS）。
+- `subtitles_json`：字幕内容列表 JSON（`subtitle_text` / `start_time` / `end_time`）。
+- `subtitle_font_type`：`sy_black`（默认）、`pm_zhengdao`、`zhanku_kuaile`。
+- `subtitle_pos_preset`：`bottom_center`（默认）、`top_center`、`center`、`lower_third`。
+- `subtitle_font_size` / `subtitle_font_color` / `subtitle_text_effect`：字号、颜色与花字效果。
+
+### Stitch · 视频拼合
+
+- `videos`：待拼合的视频列表（2～3 个）。
+- `stitch_direction`：`horizontal`（左右）或 `vertical`（上下）。
+
+### Crop · 画面裁剪
+
+- `top_left_x` / `top_left_y` / `bottom_right_x` / `bottom_right_y`：裁剪矩形坐标（像素），
+  右下角必须大于左上角，且宽高差不得小于 16px。
+
+### Audio Trim · 音频裁剪
+
+- `start_time` / `end_time`：裁剪范围（秒）。
+- 输出：原生 `AUDIO`。
+
+### Fade Audio · 音频淡入淡出
+
+- `fade_in_duration` / `fade_out_duration`：淡入/淡出时长（秒），默认 `1`。
+- 输出格式默认 `mp3`；可选 `mp3`、`m4a`、`ogg`、`flac`、`wav`。
+
+### Fade · 视频声音淡入淡出
+
+- `fade_in_duration` / `fade_out_duration`：淡入/淡出时长（秒），默认 `1`。
+
+### Animated · 提取动图
+
+- `start_time` / `end_time`：动图时间范围（秒），结束时间必须大于起始时间。
+- `output_format`：`gif`（默认）或 `webp`。
+- 输出：`image` 为完整帧批次，`frame_durations_ms` 为每帧毫秒时长 JSON，`animated_url` 为保留原编码的 GIF/WebP 地址。
+- IMAGE 帧批次本身不保存动画时序；需要原始动图时使用 `animated_url`，云端 URL 有效期以服务端为准。
 
 ### Enhance · 视频增强
 

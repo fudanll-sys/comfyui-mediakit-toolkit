@@ -85,39 +85,32 @@ class MediaBridgeDownloadTests(unittest.IsolatedAsyncioTestCase):
                 "https://example.com/out.mp4"
             )
 
-    async def test_download_audio_output_falls_back_to_video_downloader(self):
-        fake_util = type(
-            "util",
-            (),
-            {
-                "download_url_to_audio_output": None,
-                "download_url_to_video_output": AsyncMock(return_value="AUDIO"),
-            },
-        )()
-        with patch.dict("sys.modules", {"comfy_api_nodes": type("m", (), {"util": fake_util})()}):
-            from mediakit_toolkit.media_bridge import download_audio_output
+    async def test_audio_never_falls_back_to_video_downloader(self):
+        from mediakit_toolkit.media_bridge import download_audio_output
+        with patch("mediakit_toolkit.media_bridge._read_media_bytes", return_value=b"audio"), patch(
+            "mediakit_toolkit.media_bridge._decode_audio_bytes", return_value={"waveform": "tensor", "sample_rate": 48000}
+        ) as decode:
+            result = await download_audio_output("https://example.com/out.m4a")
+            self.assertEqual(result["sample_rate"], 48000)
+            decode.assert_called_once_with(b"audio")
 
-            self.assertEqual(await download_audio_output("https://example.com/out.m4a"), "AUDIO")
-
-    async def test_download_local_path_uses_file_uri(self):
-        fake_util = type("util", (), {"download_url_to_video_output": AsyncMock(return_value="VIDEO")})()
+    async def test_download_local_video_uses_video_from_file(self):
+        from mediakit_toolkit.media_bridge import download_video_output
+        fake_util = type("util", (), {"download_url_to_video_output": AsyncMock()})()
+        factory = type("factory", (), {"VideoFromFile": staticmethod(lambda p: ("VIDEO", p))})()
+        latest = type("latest", (), {"InputImpl": factory})()
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "out.mp4"
             path.write_bytes(b"x")
-            with patch.dict("sys.modules", {"comfy_api_nodes": type("m", (), {"util": fake_util})()}):
-                from mediakit_toolkit.media_bridge import download_video_output
+            with patch.dict("sys.modules", {"comfy_api_nodes": type("m", (), {"util": fake_util})(), "comfy_api.latest": latest}):
+                self.assertEqual(await download_video_output(str(path)), ("VIDEO", str(path.resolve())))
+                fake_util.download_url_to_video_output.assert_not_awaited()
 
-                self.assertEqual(await download_video_output(str(path)), "VIDEO")
-                self.assertEqual(
-                    fake_util.download_url_to_video_output.await_args.args[0],
-                    path.resolve().as_uri(),
-                )
+    async def test_missing_result_image_raises_input_error(self):
+        from mediakit_toolkit.media_bridge import download_image_output
+        with self.assertRaises(MediaKitInputError):
+            await download_image_output("/does/not/exist.png")
 
-    async def test_missing_comfy_util_raises_compatibility_error(self):
-        with patch.dict("sys.modules", {}), self.assertRaises(MediaKitCompatibilityError):
-            from mediakit_toolkit.media_bridge import download_image_output
-
-            await download_image_output("https://example.com/out.png")
 
 
 if __name__ == "__main__":

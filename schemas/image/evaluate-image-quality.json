@@ -3,5 +3,228 @@
   "tool": "evaluate-image-quality",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "用于图像画质评估，对输入图片进行主客观画质和美学评分，适用于质量监控、低质图筛查、内容审核、推荐排序和训练数据清洗。",
+    "input_schema": {
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "standard_evaluate_items"
+            ]
+          },
+          "then": {
+            "anyOf": [
+              {
+                "not": {
+                  "required": [
+                    "tool_version"
+                  ]
+                }
+              },
+              {
+                "properties": {
+                  "tool_version": {
+                    "const": "standard"
+                  }
+                },
+                "required": [
+                  "tool_version"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "description": "提交一张公网可访问图片 URL，按 tool_version 选择标准版或专业版画质评估。 可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "image_url": {
+          "description": "image_url 是待评估的图像 URL，支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议，仅支持 png、jpeg、webp和heic 格式，单张图片不得超过 10 MB，图像输入分辨率的长边不得超过 7680 px，短边不得超过 4320 px。",
+          "format": "media-to-url",
+          "type": "string",
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpeg",
+              "webp",
+              "heic"
+            ],
+            "max_bytes": 10485760,
+            "max_long_edge": 7680,
+            "max_short_edge": 4320
+          }
+        },
+        "standard_evaluate_items": {
+          "default": [
+            "vqscore",
+            "noise",
+            "aesthetic",
+            "blur"
+          ],
+          "description": "standard_evaluate_items 为非必填参数，仅当 tool_version 为 standard 时生效，用于指定需要返回的标准版评估维度。standard_evaluate_items 可选 15 个评估维度：vqscore（图片主观质量，值越高表示质量越好）、advcolor（图片整体色彩质量）、blockiness（块效应（马赛克）严重程度）、noise（图片噪声强度）、aesthetic（综合大众美学的质量评分）、blur（模糊度）、cg（是否为非自然场景，如游戏、录屏）、contrast（对比度）、texture（纹理丰富程度）、brightness（平均亮度）、overexposure（过曝光程度）、hue（色调均衡程度）、saturation（饱和度均衡程度）、green（偏绿或绿幕检测）、cmartifacts（压缩失真检测）。standard_evaluate_items 为空时默认返回 vqscore、noise、aesthetic、blur 四个维度。",
+          "items": {
+            "description": "评估工具。",
+            "enum": [
+              "vqscore",
+              "advcolor",
+              "blockiness",
+              "noise",
+              "aesthetic",
+              "blur",
+              "cg",
+              "contrast",
+              "texture",
+              "brightness",
+              "overexposure",
+              "hue",
+              "saturation",
+              "green",
+              "cmartifacts"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "tool_version": {
+          "default": "standard",
+          "description": "tool_version 用于选择画质评估所用的模型版本，为非必填参数，支持 standard 和 professional，默认为 standard。standard 提供 15 种基础画质评估维度，可通过 standard_evaluate_items 灵活选择部分或全部维度，在成本和功能灵活性上达到较好的平衡；不传 standard_evaluate_items 时默认返回 vqscore、noise、aesthetic、blur。professional 基于大模型进行评估，直接返回一组固定的综合性评分，提供更优的综合评估效果，适用于对图像品质要求较高的场景，且不支持自定义评估维度。",
+          "enum": [
+            "standard",
+            "professional"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object"
+    },
+    "name": "evaluate_image_quality",
+    "output_schema": {
+      "description": "画质评估结果。standard 返回所选维度分数，professional 返回大模型评估结构；具体字段随底层评分维度变化。",
+      "properties": {
+        "advcolor": {
+          "description": "standard 的 advcolor 表示图片整体色彩质量，值越高表示色彩质量越高，取值范围为 0 到 100：[0, 50] 表示色彩质量差，[50, 60] 表示中，[60, 100] 表示好。",
+          "type": "number"
+        },
+        "aesthetic": {
+          "description": "standard 的 aesthetic 表示综合大众美学的质量评分，值越高表示更具美感，取值范围为 0 到 100。",
+          "type": "number"
+        },
+        "aesthetics": {
+          "description": "professional 的 aesthetics 表示美学评分，评分越高，图像越“好看”，构图、色彩、风格越协调，取值范围为 0 到 100，支持两位小数。",
+          "type": "number"
+        },
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "artifacts": {
+          "description": "professional 的 artifacts 表示伪影评分，即图像是否存在压缩、AI 生成痕迹、畸变等；评分越高，伪影越少，图像越自然，取值范围为 0 到 100，支持两位小数。",
+          "type": "number"
+        },
+        "blockiness": {
+          "description": "standard 的 blockiness 表示图片块效应相关的质量评分，值越高表示块效应越弱、画质越好；[0, 50] 表示差，[50, 60] 表示中，[60, 100] 表示好；-1 表示检测图像为非常规图像（如游戏、特效图等）。",
+          "type": "number"
+        },
+        "blur": {
+          "description": "standard 和 professional 的 blur 都表示模糊评分，即图像是否清晰；评分越高，图像越清晰和锐利，取值范围为 0 到 100，支持两位小数。",
+          "type": "number"
+        },
+        "brightness": {
+          "description": "standard 的 brightness 表示平均亮度，值越高表示越亮，取值范围为 0 到 255。",
+          "type": "number"
+        },
+        "cg": {
+          "description": "standard 的 cg 取值范围为 0 到 100，数值接近 0 表示自然场景，接近 100 表示非自然场景（游戏、录屏等）。",
+          "type": "number"
+        },
+        "cmartifacts": {
+          "description": "standard 的 cmartifacts 表示压缩失真强度，分数越高表示压缩失真越显著、画质越差，取值范围为 0 到 100：[0, 30) 表示无或轻微压缩失真，[30, 60) 表示存在压缩失真，[60, 100] 表示存在明显噪声。",
+          "type": "number"
+        },
+        "contrast": {
+          "description": "standard 的 contrast 表示对比度程度，值越低表示对比度越低，取值范围为 0 到 100。",
+          "type": "number"
+        },
+        "green": {
+          "description": "standard 的 green 表示图像绿色区域面积大小；数值越大，绿色区域面积越大，是绿幕的概率越大，取值范围为 0 到 255。",
+          "type": "number"
+        },
+        "hue": {
+          "description": "standard 的 hue 表示色调的均衡程度，值越高表示色调越均衡，取值范围为 0 到 100。",
+          "type": "number"
+        },
+        "noise": {
+          "description": "standard 和 professional 的 noise 都表示噪声评分，即图像中是否存在颗粒感或随机噪声；评分越高，图像越干净，取值范围为 0 到 100，支持两位小数。",
+          "type": "number"
+        },
+        "overall": {
+          "description": "professional 的 overall 表示综合以上指标的总评分，评分越高，图像画质越好，取值范围为 0 到 100，支持两位小数。",
+          "type": "number"
+        },
+        "overexposure": {
+          "description": "standard 的 overexposure 表示过曝光面积大小程度，值越高越可能存在过曝光，取值范围为 0 到 100。",
+          "type": "number"
+        },
+        "saturation": {
+          "description": "standard 的 saturation 表示饱和度的均衡程度，值越高表示饱和度越均衡，取值范围为 0 到 100。",
+          "type": "number"
+        },
+        "texture": {
+          "description": "standard 的 texture 表示纹理的丰富程度，值越高表示纹理越丰富，取值范围为 0 到 255。",
+          "type": "number"
+        },
+        "tool_version": {
+          "description": "result.tool_version 在 standard 结果中固定为 standard，在 professional 结果中固定为 professional。",
+          "type": "string"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        },
+        "vqscore": {
+          "description": "standard 的 vqscore 表示图片主观质量，值越高表示质量越好，取值范围为 0 到 100。",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    }
+  }
 }

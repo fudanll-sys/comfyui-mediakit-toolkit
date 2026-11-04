@@ -3,5 +3,45 @@
   "tool": "extract-video-invisible-watermark",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "从已嵌入暗水印的视频中解析并还原隐藏的数字信息；如果同一视频被多次嵌入暗水印，也能够提取出所有水印信息。",
+    "input_schema": {
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "video_url": {
+          "description": "待提取暗水印的视频 URL，必选。支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；支持 mp4、mov、mkv、flv、ts、avi、wmv 等主流视频格式；分辨率最高支持 4K。",
+          "format": "media-to-vid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "video_url"
+      ],
+      "type": "object"
+    },
+    "name": "extract_video_invisible_watermark",
+    "output_schema": {
+      "description": "Cloud 异步调用的提交结果。",
+      "properties": {
+        "request_id": {
+          "description": "请求标识；仅在后端返回时出现。",
+          "type": "string"
+        },
+        "task_id": {
+          "description": "异步任务的唯一标识，用于查询任务状态并获取最终结果。",
+          "minLength": 1,
+          "type": "string"
+        },
+        "task_type": {
+          "description": "任务类型；仅在后端实际返回非空值时出现。",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id"
+      ],
+      "type": "object"
+    }
+  }
 }

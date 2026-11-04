@@ -3,5 +3,176 @@
   "tool": "resize-image",
   "modes": [
     "Cloud"
-  ]
+  ],
+  "schema": {
+    "description": "用于图像缩放，支持按指定宽高精确缩放，也可按长边、短边或等比模式缩放，适用于多端素材适配、封面与缩略图生成及批量图片预处理。",
+    "input_schema": {
+      "anyOf": [
+        {
+          "properties": {
+            "resize_long": {
+              "minimum": 1
+            }
+          },
+          "required": [
+            "resize_long"
+          ]
+        },
+        {
+          "properties": {
+            "resize_short": {
+              "minimum": 1
+            }
+          },
+          "required": [
+            "resize_short"
+          ]
+        }
+      ],
+      "description": "可选参数仅在用户明确指定，或可从用户意图准确确定时填写；不得伪造。不能准确确定时省略，确为正确完成任务所必需时先向用户澄清。",
+      "properties": {
+        "image_url": {
+          "description": "image_url 是待处理图片的 URL，图片来源支持本地文件路径和公网 HTTP/HTTPS URL 两种输入协议；输入支持 .png、.jpg、.jpeg、.webp 格式；输入仅支持静图；建议单张输入图片不超过 35 MB，输入图像的宽和高均不得超过 10000 像素。",
+          "format": "media-to-binary",
+          "type": "string",
+          "x-input-limits": {
+            "allowed_formats": [
+              "png",
+              "jpg",
+              "jpeg",
+              "webp"
+            ],
+            "max_bytes": 36700160,
+            "max_edge": 10000
+          }
+        },
+        "output_format": {
+          "default": "original",
+          "description": "output_format 指定输出图片格式；支持 original、png、jpeg、webp，original 表示输出保持与原图一致的格式；默认 original。",
+          "enum": [
+            "original",
+            "png",
+            "jpeg",
+            "webp"
+          ],
+          "type": "string"
+        },
+        "resize_adaptive": {
+          "default": [
+            "enlarge",
+            "shrink"
+          ],
+          "description": "resize_adaptive 控制仅在特定条件下执行缩放；支持 enlarge、shrink；enlarge 仅在原图尺寸小于目标尺寸时执行放大，shrink 仅在原图尺寸大于目标尺寸时执行缩小；默认 enlarge、shrink，即总是执行缩放。",
+          "items": {
+            "description": "缩放适配策略枚举。",
+            "enum": [
+              "enlarge",
+              "shrink"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "resize_long": {
+          "default": 0,
+          "description": "目标图像的长边尺寸，单位为像素。等比缩放：仅设置此参数（或将 resize_short 设为 0），图像将按原始比例缩放，使长边匹配此值。组合使用：当与 resize_short 同时设置时，缩放行为由 resize_mode 参数决定。与 resize_short 必须至少提供一个大于 0 的值。",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "resize_mode": {
+          "default": "contain",
+          "description": "resize_mode 定义同时指定 resize_long 和 resize_short 时的缩放行为；支持 exact、contain、cover；exact 强制将图像精确缩放到 resize_long x resize_short，可能导致拉伸或压缩变形；contain 保持原始宽高比，使图像完整包含在 resize_long x resize_short 矩形框内，最终宽高均不超过指定值；cover 保持原始宽高比，使图像完全填满 resize_long x resize_short 矩形框，并居中裁剪超出部分；默认 contain。",
+          "enum": [
+            "exact",
+            "contain",
+            "cover"
+          ],
+          "type": "string"
+        },
+        "resize_short": {
+          "default": 0,
+          "description": "目标图像的短边尺寸，单位为像素。等比缩放：仅设置此参数（或将 resize_long 设为 0），图像将按原始比例缩放，使短边匹配此值。组合使用：当与 resize_long 同时设置时，缩放行为由 resize_mode 参数决定。与 resize_long 必须至少提供一个大于 0 的值。",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "image_url"
+      ],
+      "type": "object"
+    },
+    "name": "resize_image",
+    "output_schema": {
+      "description": "缩放结果图及常用 metadata。",
+      "properties": {
+        "agent_hint": {
+          "description": "Agent 产物交付提示；仅当成功结果包含 HTTP/HTTPS 产物 URL 时返回。此时本轮必须调用 next_tool（interaction_ask），参数取 arguments，让用户选择使用 24 小时链接或转存为 7 天链接；交付门禁由豆包 Skill 承载。",
+          "properties": {
+            "arguments": {
+              "description": "原样传给 interaction_ask 的参数，含 questions[].display_option[]（option_id/label/description）。",
+              "type": "object"
+            },
+            "next_tool": {
+              "description": "本轮必须调用的工具名；固定为 interaction_ask。",
+              "type": "string"
+            },
+            "required": {
+              "description": "是否必须执行该提示。",
+              "type": "boolean"
+            },
+            "type": {
+              "description": "提示类型；产物交付提示固定为 mediakit_artifact_delivery。",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "required",
+            "next_tool",
+            "arguments"
+          ],
+          "type": "object"
+        },
+        "image_format": {
+          "description": "image_format 表示生成图像的格式。",
+          "type": "string"
+        },
+        "image_height": {
+          "description": "image_height 表示生成图像的高度，单位为 px。",
+          "type": "integer"
+        },
+        "image_size": {
+          "description": "image_size 表示生成图像的大小，单位为字节。",
+          "type": "integer"
+        },
+        "image_url": {
+          "description": "image_url 是处理后图片文件的下载地址，有效期为 24 小时，请务必及时保存下载地址对应的产物。",
+          "format": "media-url",
+          "type": "string",
+          "x-source-type": "imagex_uri"
+        },
+        "image_width": {
+          "description": "image_width 表示生成图像的宽度，单位为 px。",
+          "type": "integer"
+        },
+        "usage": {
+          "additionalProperties": false,
+          "description": "可选顶层返回字段。仅对已开放该字段的账号，在 Cloud 同步调用成功，或 query_task 查询到 completed 终态，且服务实际产生并返回正向计费用量时透传；其他状态、异步提交及 Local 调用不返回。",
+          "properties": {
+            "normalized_usage": {
+              "description": "归一化后的计费用量。由服务端按 BillingCount / 固定单位换算值 × list_price 计算，结果保留 6 位小数；客户端只校验并原样透传，不计算、推断或补齐。",
+              "type": "number"
+            }
+          },
+          "required": [
+            "normalized_usage"
+          ],
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
 }
