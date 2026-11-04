@@ -15,7 +15,7 @@ inside each node.
 
 ## Status
 
-Released version: `0.4.0`. The following list also includes unreleased P1 development nodes:
+Version `0.5.0` includes the P1 editing nodes and native media integration fixes:
 
 | Node | Description |
 | --- | --- |

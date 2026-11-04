@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-11-04
 
 - Cover the full MediaKit `editing` domain (20/20 tools) with 18 new native
   ComfyUI nodes, all with mode-adaptive `run_mode` (`auto`/`cloud`) and the

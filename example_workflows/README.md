@@ -32,7 +32,7 @@ Load Video → Trim · 视频裁剪 → Save Video
 Load Video → Extract Audio · 提取音频 → Save Audio
 ```
 
-## P1 开发示例（未发布）
+## P1 示例（0.5.0）
 
 - `mediakit_video_edit_basic.json`：加载视频 → 变速 → 旋转 → 保存。
 - `mediakit_video_concat.json`：两路视频连接 `videos.video_1` / `videos.video_2` → 拼接 → 保存。
