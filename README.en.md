@@ -478,6 +478,29 @@ python -m unittest discover -s tests -v
 Unit tests mock MediaKit CLI and never submit a paid cloud task. Real capability
 validation must be performed manually with a short, authorized test video.
 
+### Paid cloud smoke test (manual only)
+
+The repository ships a `Cloud Smoke (paid, manual)` GitHub Actions workflow and
+`scripts/cloud_smoke.py` to verify the real cloud path (authentication, async
+submission, polling, and result download):
+
+- The workflow uses `workflow_dispatch` only; it never runs on push or pull requests.
+- Before running it, configure `MEDIAKIT_API_KEY` under Settings → Secrets and
+  variables → Actions. The key is injected only through GitHub Secrets and is never
+  written to code or logs.
+- Each run submits exactly one minimal 1-second billable `trim-video` task and may
+  incur a small charge.
+- API keys and signed-URL query parameters are redacted; only diagnostic artifacts
+  are uploaded on failure.
+
+Run it locally after installing `mediakit-cli`, `ffmpeg`, and authenticating:
+
+```bash
+python scripts/cloud_smoke.py --duration-seconds 2
+```
+
+See [SECURITY.md](./SECURITY.md) for the Registry publishing and security self-review.
+
 ## License
 
 [MIT](./LICENSE). This is an unofficial community integration and is not an

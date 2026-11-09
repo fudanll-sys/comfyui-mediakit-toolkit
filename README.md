@@ -472,6 +472,25 @@ python -m unittest discover -s tests -v
 单元测试会模拟 MediaKit CLI，不会提交付费云端任务。真实能力验证需要使用一个
 较短且已获授权的测试视频手动执行。
 
+### 付费云端冒烟（仅手动触发）
+
+仓库提供 `Cloud Smoke (paid, manual)` GitHub Actions 工作流和
+`scripts/cloud_smoke.py`，用于验证真实云端链路（鉴权、异步提交、轮询、结果下载）：
+
+- 工作流只有 `workflow_dispatch`，不会在 push 或 PR 时自动运行；
+- 运行前必须在仓库 Settings → Secrets and variables → Actions 配置
+  `MEDIAKIT_API_KEY`，密钥只通过 GitHub Secrets 注入，不写入代码或日志；
+- 每次只提交一个最小的 1 秒 `trim-video` 付费任务，可能产生少量费用；
+- 输出的签名 URL 查询参数和 API Key 均会脱敏，失败时只上传诊断产物。
+
+本地手动运行（需要自行保证已安装 `mediakit-cli`、`ffmpeg` 并完成鉴权）：
+
+```bash
+python scripts/cloud_smoke.py --duration-seconds 2
+```
+
+Registry 发布与安全自查见 [SECURITY.md](./SECURITY.md)。
+
 ## 许可证
 
 [MIT](./LICENSE)。本项目是非官方社区集成，不代表火山引擎或 ComfyUI 官方产品。

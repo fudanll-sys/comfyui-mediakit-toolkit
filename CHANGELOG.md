@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.1 - 2026-11-09
+
+- Add a paid, manual-only cloud smoke test (`scripts/cloud_smoke.py` plus the
+  `Cloud Smoke (paid, manual)` GitHub Actions workflow). It submits exactly one
+  minimal billable `trim-video` task, polls to a terminal state, downloads the
+  result, and redacts the API key and signed URLs. It has no push/PR triggers and
+  runs only when a human dispatches it with the `MEDIAKIT_API_KEY` secret.
+- Add `mediakit_toolkit/cloud_smoke.py` helpers and 11 unit tests covering
+  argument construction, JSON parsing, terminal-state validation, result
+  extraction, and the `subprocess.run(..., shell=False)` contract. No paid call is
+  made by the unit suite.
+- Add `SECURITY.md` documenting the Comfy Registry quality/security self-review
+  (no `eval`/`exec`, no runtime `pip install`, no obfuscation, no maintainer
+  proxy, key/URL redaction) and the Registry status follow-up process.
+- Add a square `assets/icon.svg` and wire it into `[tool.comfy].Icon` so the
+  Registry/Manager listing has a valid icon (addresses a likely review gap behind
+  the 0.5.0 `NodeVersionStatusFlagged` state; the public API does not expose the
+  exact flag reason).
+
 ## 0.5.0 - 2026-11-04
 
 - Cover the full MediaKit `editing` domain (20/20 tools) with 18 new native

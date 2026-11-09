@@ -1,0 +1,66 @@
+name: Cloud Smoke (paid, manual)
+
+# This workflow intentionally has no push/pull_request triggers. It submits one
+# minimal, billable MediaKit cloud task and must be started by a human.
+on:
+  workflow_dispatch:
+    inputs:
+      poll_interval_seconds:
+        description: "Polling interval in seconds"
+        required: false
+        default: "5"
+      max_poll_attempts:
+        description: "Maximum polling attempts"
+        required: false
+        default: "60"
+
+concurrency:
+  group: mediakit-cloud-smoke-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  paid-cloud-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MEDIAKIT_API_KEY: ${{ secrets.MEDIAKIT_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Verify required secret exists
+        shell: bash
+        run: |
+          if [ -z "${MEDIAKIT_API_KEY}" ]; then
+            echo "::error::Repository secret MEDIAKIT_API_KEY is not configured. Add it under Settings -> Secrets and variables -> Actions before running this paid smoke workflow."
+            exit 1
+          fi
+      - name: Install ffmpeg and MediaKit CLI
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          npx -y @volcengine/mediakit-cli install -y
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          mediakit-cli --version
+      - name: Run one minimal paid cloud trim task
+        shell: bash
+        run: |
+          python -m unittest discover -s tests -q
+          python scripts/cloud_smoke.py \
+            --work-dir ./cloud-smoke-artifacts \
+            --duration-seconds 2 \
+            --poll-interval-seconds "${{ github.event.inputs.poll_interval_seconds }}" \
+            --max-poll-attempts "${{ github.event.inputs.max_poll_attempts }}"
+      - name: Upload smoke artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mediakit-cloud-smoke-${{ github.run_id }}
+          path: cloud-smoke-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
