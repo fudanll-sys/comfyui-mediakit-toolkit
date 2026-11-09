@@ -1,7 +1,8 @@
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
+import mediakit_toolkit.cloud_smoke as cloud_smoke
 from mediakit_toolkit.cloud_smoke import (
     assert_terminal_completed,
     build_poll_arguments,
@@ -17,14 +18,15 @@ from mediakit_toolkit.errors import MediaKitConfigurationError, MediaKitTaskErro
 
 class CloudSmokeArgumentTests(unittest.TestCase):
     def test_trim_arguments_use_cloud_and_one_second_window(self):
-        args = build_trim_arguments(Path("/tmp/in.mp4"), start_time=0.0, end_time=1.0)
+        input_path = Path("in.mp4")
+        args = build_trim_arguments(input_path, start_time=0.0, end_time=1.0)
         self.assertEqual(
             args,
             [
                 "editing",
                 "trim-video",
                 "--video-url",
-                "/tmp/in.mp4",
+                str(input_path),
                 "--start-time",
                 "0.0",
                 "--end-time",
@@ -34,7 +36,7 @@ class CloudSmokeArgumentTests(unittest.TestCase):
 
     def test_rejects_inverted_trim_window(self):
         with self.assertRaises(MediaKitTaskError):
-            build_trim_arguments(Path("/tmp/in.mp4"), start_time=1.0, end_time=1.0)
+            build_trim_arguments(Path("in.mp4"), start_time=1.0, end_time=1.0)
 
     def test_poll_arguments_are_bounded(self):
         args = build_poll_arguments("task-1", poll_interval_seconds=5, max_poll_attempts=60)
@@ -82,7 +84,8 @@ class CloudSmokeParsingTests(unittest.TestCase):
 
 
 class CloudSmokeCommandTests(unittest.TestCase):
-    def test_run_json_command_uses_argument_array_without_shell(self):
+    @patch.object(cloud_smoke, "require_cli", return_value="mediakit-cli")
+    def test_run_json_command_uses_argument_array_without_shell(self, _require_cli):
         completed = MagicMock(return_value=MagicMock(
             returncode=0,
             stdout='{"task_id":"task-1"}',
@@ -97,7 +100,8 @@ class CloudSmokeCommandTests(unittest.TestCase):
         self.assertIsInstance(command, list)
         self.assertIn("mediakit-cli", command[0])
 
-    def test_run_json_command_raises_on_nonzero_exit(self):
+    @patch.object(cloud_smoke, "require_cli", return_value="mediakit-cli")
+    def test_run_json_command_raises_on_nonzero_exit(self, _require_cli):
         completed = MagicMock(return_value=MagicMock(returncode=2, stdout="", stderr="boom"))
         with self.assertRaises(MediaKitTaskError):
             run_json_command(["bad"], timeout=30, runner=completed)
