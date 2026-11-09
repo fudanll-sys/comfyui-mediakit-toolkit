@@ -10,6 +10,10 @@ on:
         type: boolean
         required: true
         default: false
+      resume_task_id:
+        description: "只查询和下载已有 task_id（填写后绝不提交新任务；无需计费确认）"
+        required: false
+        default: ""
       client_token:
         description: "幂等 token（留空则自动生成；重试同一付费任务时填固定值避免重复计费）"
         required: false
@@ -58,8 +62,9 @@ jobs:
         shell: bash
         env:
           CONFIRM_BILLING: ${{ inputs.confirm_billing }}
+          SMOKE_RESUME_TASK: ${{ inputs.resume_task_id }}
         run: |
-          if [ "$CONFIRM_BILLING" != "true" ]; then
+          if [ -z "$SMOKE_RESUME_TASK" ] && [ "$CONFIRM_BILLING" != "true" ]; then
             echo "::error::This workflow submits a real billable MediaKit task. Set 'confirm_billing' to true to proceed."
             exit 1
           fi
@@ -89,17 +94,27 @@ jobs:
           SMOKE_POLL_INTERVAL: ${{ inputs.poll_interval_seconds }}
           SMOKE_MAX_ATTEMPTS: ${{ inputs.max_poll_attempts }}
           SMOKE_CLIENT_TOKEN: ${{ inputs.client_token }}
+          SMOKE_RESUME_TASK: ${{ inputs.resume_task_id }}
         run: |
           python -m unittest discover -s tests -q
           python scripts/verify_paid_smoke_contract.py --comfy-root ./.smoke-comfyui
-          python scripts/cloud_smoke.py \
-            --confirm-billing \
-            --comfy-root ./.smoke-comfyui \
-            --work-dir ./cloud-smoke-artifacts \
-            --duration-seconds 2 \
-            --poll-interval-seconds "$SMOKE_POLL_INTERVAL" \
-            --max-poll-attempts "$SMOKE_MAX_ATTEMPTS" \
-            --client-token "$SMOKE_CLIENT_TOKEN"
+          if [ -n "$SMOKE_RESUME_TASK" ]; then
+            python scripts/cloud_smoke.py \
+              --resume-task-id "$SMOKE_RESUME_TASK" \
+              --comfy-root ./.smoke-comfyui \
+              --work-dir ./cloud-smoke-artifacts \
+              --poll-interval-seconds "$SMOKE_POLL_INTERVAL" \
+              --max-poll-attempts "$SMOKE_MAX_ATTEMPTS"
+          else
+            python scripts/cloud_smoke.py \
+              --confirm-billing \
+              --comfy-root ./.smoke-comfyui \
+              --work-dir ./cloud-smoke-artifacts \
+              --duration-seconds 2 \
+              --poll-interval-seconds "$SMOKE_POLL_INTERVAL" \
+              --max-poll-attempts "$SMOKE_MAX_ATTEMPTS" \
+              --client-token "$SMOKE_CLIENT_TOKEN"
+          fi
       - name: Upload smoke report and synthetic media
         if: always()
         uses: actions/upload-artifact@v4

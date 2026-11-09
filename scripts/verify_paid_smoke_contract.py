@@ -57,6 +57,12 @@ with tempfile.TemporaryDirectory() as directory:
             max_attempts=60, client_token="contract-only-token")
     assert result["status"] == "passed" and result["decoded_frames"] == 15, result
     assert mocked.await_count == 2
+    with patch.object(smoke, "require_api_key"), patch.object(smoke, "require_cli"), \
+         patch.object(orchestrator, "run_cli_async", mocked):
+        recovered = smoke.resume_smoke(work_dir=output / "recovery", comfy_root=Path(args.comfy_root),
+            task_id="mock-task", poll_interval=5, max_attempts=60)
+    assert recovered["paid_submissions"] == 0 and recovered["decoded_frames"] == 15
+    assert mocked.await_count == 3
     report = {"passed": True, "actual_comfyui_node": "MediaKitTrimVideo",
               "native_video_decode": True, "frames": result["decoded_frames"],
               "paid_cloud_calls": 0, "mocked_boundary": "orchestrator.run_cli_async",

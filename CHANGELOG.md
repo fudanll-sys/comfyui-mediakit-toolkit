@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fix smoke CPU initialization: library-mode ComfyUI parses empty argv, so set
+  actual `comfy.cli_args.args.cpu=True` before lazy downloader imports and preflight
+  the real downloader before submitting. The first paid task completed remotely
+  but exposed this CUDA initialization failure in the CI harness.
+- Add query-only `resume_task_id`/`--resume-task-id`: recover, download and decode
+  the original task with zero new submissions. Preserve first-run failure evidence.
+
 - Remove workflow input interpolation from shell commands; use quoted environment
   variables, read-only workflow permissions and a narrowly scoped API key.
 - Paid smoke now calls the actual MediaKitTrimVideo node in a pinned ComfyUI CPU

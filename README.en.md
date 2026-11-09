@@ -512,6 +512,9 @@ python scripts/cloud_smoke.py --confirm-billing \
 ```
 
 Preserve state after failure; inspect its task_id/token before considering a new run.
+Use workflow input `resume_task_id` or local `--resume-task-id` to query/download/decode
+an existing task with zero new submissions. Keep both the first failure and recovery
+report: recovery does not retroactively make the original run green.
 
 See [SECURITY.md](./SECURITY.md) for the Registry publishing and security self-review.
 

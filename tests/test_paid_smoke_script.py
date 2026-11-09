@@ -122,6 +122,31 @@ class PaidSmokeSafetyTests(unittest.TestCase):
                 self.run_mock_smoke(path, repeat=True)
             self.assertEqual(json.loads((path / "smoke-state.json").read_text(encoding="utf-8"))["paid_submissions"], 1)
 
+    def test_resume_only_queries_original_task_and_never_calls_node(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            original_cli = AsyncMock(return_value=CommandResult(
+                {"status": "completed", "video_url": "https://example.com/output.mp4"}, "", "", 0))
+            orchestrator = __import__("mediakit_toolkit.orchestrator", fromlist=["x"])
+            class Video:
+                def save_to(self, output):
+                    Path(output).write_bytes(b"recovered")
+            node = Mock()
+            runtime = (Mock(), node, orchestrator, object())
+            with patch.object(smoke, "require_api_key"), patch.object(smoke, "require_cli"), \
+                 patch.object(smoke, "_load_runtime", return_value=runtime), \
+                 patch.object(orchestrator, "run_cli_async", original_cli), \
+                 patch("mediakit_toolkit.media_bridge.download_video_output", new_callable=AsyncMock, return_value=Video()), \
+                 patch.object(smoke, "_inspect_output", return_value={"decoded_frames": 15}):
+                result = smoke.resume_smoke(work_dir=path, comfy_root=path,
+                    task_id="original", poll_interval=5, max_attempts=60)
+            self.assertEqual(result["paid_submissions"], 0)
+            self.assertEqual(result["status"], "passed")
+            self.assertEqual(original_cli.await_count, 1)
+            self.assertNotIn("trim-video", original_cli.await_args.args[0])
+            self.assertIn("original", original_cli.await_args.args[0])
+            node.assert_not_called()
+
     def test_output_inspection_rejects_bad_duration_or_no_frames(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "out.mp4"

@@ -503,6 +503,9 @@ python scripts/cloud_smoke.py --confirm-billing \
 ```
 
 不要删除失败运行的 state 文件后盲目重跑；先检查其中的 task_id 和 token。
+已收到 task_id 时，手动工作流填写 `resume_task_id` 或本地使用
+`--resume-task-id`，恢复模式只查询、下载和解码原任务，不提交新任务；
+它不能把原失败运行改成成功，报告须同时保留原始失败与恢复验证。
 
 Registry 发布与安全自查见 [SECURITY.md](./SECURITY.md)。
 

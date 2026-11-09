@@ -55,8 +55,15 @@ def _load_runtime(comfy_root: Path):
     original_argv = sys.argv
     try:
         sys.argv = [sys.argv[0], "--cpu"]
+        # Library imports normally parse [] unless ComfyUI was launched as a
+        # server, so argv alone does NOT set CPU. Set the actual runtime args
+        # before the downloader lazily imports model_management.
+        from comfy.cli_args import args as comfy_args
+        comfy_args.cpu = True
         from comfy_api.latest import InputImpl
         from mediakit_toolkit.nodes.video_editing import MediaKitTrimVideo
+        from comfy_api_nodes import util
+        assert callable(util.download_url_to_video_output)
         import mediakit_toolkit.orchestrator as orchestrator
         import av
     finally:
@@ -159,9 +166,56 @@ def run_smoke(*, work_dir: Path, comfy_root: Path, confirm_billing: bool,
     return state
 
 
+def resume_smoke(*, work_dir: Path, comfy_root: Path, task_id: str,
+                 poll_interval: int, max_attempts: int) -> dict:
+    """Query and decode an already-submitted task; never call trim-video."""
+    if not task_id or not 2 <= poll_interval <= 60 or not 1 <= max_attempts <= 5000:
+        raise MediaKitConfigurationError("恢复任务需要原 task_id 和合法轮询参数。")
+    require_api_key()
+    require_cli()
+    _, _, orchestrator, av = _load_runtime(comfy_root)
+    from mediakit_toolkit.media_bridge import download_video_output
+    work_dir.mkdir(parents=True, exist_ok=True)
+    state_path = work_dir / "smoke-resume-state.json"
+    state = {"status": "resuming", "task_id": task_id, "paid_submissions": 0,
+             "verification": "query original task + real media bridge download/save/decode"}
+    with state_path.open("x", encoding="utf-8") as stream:
+        json.dump(state, stream, ensure_ascii=False, indent=2)
+    original_cli = orchestrator.run_cli_async
+
+    async def query_only(arguments, **kwargs):
+        if "query-task" not in arguments or "trim-video" in arguments:
+            raise MediaKitTaskError("恢复模式只允许查询，禁止任何付费提交。")
+        return await original_cli(arguments, **kwargs)
+
+    async def recover():
+        with patch.object(orchestrator, "run_cli_async", query_only):
+            payload = await orchestrator._poll_until_terminal(task_id,
+                poll_interval_seconds=poll_interval, max_poll_attempts=max_attempts,
+                capability="smoke-resume", flatten=True)
+        state["last_status"] = payload.get("status")
+        url = orchestrator._result_video_url(payload)
+        video = await download_video_output(url)
+        await asyncio.to_thread(video.save_to, str(work_dir / "smoke-output.mp4"))
+
+    async def bounded_recover():
+        return await asyncio.wait_for(recover(), timeout=600)
+
+    try:
+        asyncio.run(bounded_recover())
+        state.update(status="passed", **_inspect_output(work_dir / "smoke-output.mp4", av))
+    except Exception as exc:
+        state.update(status="failed", error=redact_text(str(exc)))
+        raise
+    finally:
+        state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    return state
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--confirm-billing", action="store_true")
+    parser.add_argument("--resume-task-id", default="", help="Query/decode an existing task; never submit.")
     parser.add_argument("--comfy-root", required=True)
     parser.add_argument("--work-dir", default="./cloud-smoke-artifacts")
     parser.add_argument("--duration-seconds", type=float, default=2.0)
@@ -169,10 +223,15 @@ def main() -> int:
     parser.add_argument("--max-poll-attempts", type=int, default=60)
     parser.add_argument("--client-token", default="")
     args = parser.parse_args()
-    result = run_smoke(work_dir=Path(args.work_dir).resolve(), comfy_root=Path(args.comfy_root).resolve(),
-                       confirm_billing=args.confirm_billing, duration_seconds=args.duration_seconds,
-                       poll_interval=args.poll_interval_seconds, max_attempts=args.max_poll_attempts,
-                       client_token=args.client_token)
+    if args.resume_task_id:
+        result = resume_smoke(work_dir=Path(args.work_dir).resolve(),
+            comfy_root=Path(args.comfy_root).resolve(), task_id=args.resume_task_id,
+            poll_interval=args.poll_interval_seconds, max_attempts=args.max_poll_attempts)
+    else:
+        result = run_smoke(work_dir=Path(args.work_dir).resolve(), comfy_root=Path(args.comfy_root).resolve(),
+                           confirm_billing=args.confirm_billing, duration_seconds=args.duration_seconds,
+                           poll_interval=args.poll_interval_seconds, max_attempts=args.max_poll_attempts,
+                           client_token=args.client_token)
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 
