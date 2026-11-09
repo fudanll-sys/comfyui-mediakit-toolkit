@@ -475,28 +475,34 @@ python -m unittest discover -s tests -v
 ### 付费云端冒烟（仅手动触发）
 
 仓库提供 `Cloud Smoke (paid, manual)` GitHub Actions 工作流和
-`scripts/cloud_smoke.py`，用于验证真实云端链路（鉴权、异步提交、轮询、结果下载）：
+`scripts/cloud_smoke.py`。工作流使用固定提交版本的真实 ComfyUI CPU 环境，执行
+`VideoFromFile → MediaKitTrimVideo.execute → 原生 VIDEO 保存 → PyAV 解码`，
+验证节点、素材桥接、生产编排、CLI 模式适配、云端终态和约 1 秒输出。
+**工作流存在不代表真实云端 E2E 已通过；须有对应运行成功的报告才能验收。**
 
-- 工作流只有 `workflow_dispatch`，不会在 push 或 PR 时自动运行；
-- 触发时必须把 `confirm_billing` 显式勾选为 `true`，表示知悉会产生一次真实计费，
-  否则在任何付费调用之前直接失败；
-- 同一时间只允许一个冒烟运行（固定并发组），新触发会排队/取消，避免并发产生
-  多个付费任务；
-- 每次运行只提交一个最小的 1 秒 `trim-video` 付费任务，并携带幂等
-  `client_token`：自动生成的 token 保证每次是独立新任务；若要重试同一次提交，
-  可在手动触发时传入固定 token，后端 24 小时幂等会返回原任务而不是重复计费；
-- 运行前必须在仓库 Settings → Secrets and variables → Actions 配置
-  `MEDIAKIT_API_KEY`，密钥只通过 GitHub Secrets 注入，不写入代码或日志；
-- 输出的签名 URL 查询参数和 API Key 均会脱敏，失败时只上传诊断产物。
+- 只有 `workflow_dispatch`，push/PR 不自动付费；工作流须勾选
+  `confirm_billing=true`，本地脚本同样须显式传 `--confirm-billing`；
+- 固定并发组只保证串行，不是费用配额：后续排队运行仍可能收费；
+- 每次最多提交一次 `trim-video`，不自动重试付费提交；提交前将 token 写入
+  `smoke-state.json`，收到 task_id 后更新该文件，失败时也保留；
+- 同一输出目录已有 state 文件时拒绝重新提交。超时不代表后端任务取消或未计费，
+  已有 task_id 应只查询原任务。跨运行使用相同 token 仅是后端幂等辅助，
+  不保证更换输入文件路径/上传地址后仍不会产生新任务；
+- 配置仓库 Secret `MEDIAKIT_API_KEY` 后才可运行。不要把密钥写进代码、
+  CLI 参数或工作流文件；
+- 默认生成 2 秒合成素材，裁剪 0～1 秒；节点阶段最多等待 10 分钟，
+  总轮询预算为间隔×次数，不因查询窗口重置而倍增；
+- 成功和失败都会上传诊断报告与合成素材；报告不保存 API Key 或签名 URL。
 
-本地手动运行（需要自行保证已安装 `mediakit-cli`、`ffmpeg` 并完成鉴权；本地运行
-同样会产生一次真实计费）：
+本地需官方 `mediakit-cli`、`ffmpeg`、真实 ComfyUI 源码及其 Python 依赖。
+请在 ComfyUI Python 环境中执行（会产生真实计费）：
 
 ```bash
-python scripts/cloud_smoke.py --duration-seconds 2
-# 重试同一次提交、避免重复计费时显式传入固定 token：
-python scripts/cloud_smoke.py --client-token mediakit-smoke-xxxx
+python scripts/cloud_smoke.py --confirm-billing \
+  --comfy-root /path/to/ComfyUI --work-dir ./cloud-smoke-artifacts
 ```
+
+不要删除失败运行的 state 文件后盲目重跑；先检查其中的 task_id 和 token。
 
 Registry 发布与安全自查见 [SECURITY.md](./SECURITY.md)。
 

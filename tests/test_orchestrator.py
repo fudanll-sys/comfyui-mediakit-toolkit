@@ -273,8 +273,9 @@ class VideoUnderstandingOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 class CloudPollWindowTests(unittest.IsolatedAsyncioTestCase):
     """The poller must re-query the same task_id across 9-minute CLI windows."""
 
+    @patch("mediakit_toolkit.orchestrator.asyncio.sleep", new_callable=AsyncMock)
     @patch("mediakit_toolkit.orchestrator.run_cli_async", new_callable=AsyncMock)
-    async def test_running_window_then_completed_reuses_task_id(self, run_cli_async):
+    async def test_running_window_then_completed_reuses_task_id(self, run_cli_async, _sleep):
         run_cli_async.side_effect = [
             CommandResult({"task_id": "t1", "status": "running"}, "", "", 0),
             CommandResult(

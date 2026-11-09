@@ -1,199 +1,185 @@
 #!/usr/bin/env python3
-"""Run exactly one minimal, paid MediaKit cloud smoke test.
-
-This script is intended for manual local verification and the
-workflow_dispatch GitHub Actions job. It never stores or prints the API key
-or the signed result URL's query parameters.
-"""
-
+"""Manual, paid smoke through the real Trim node; never retry a submission."""
 from __future__ import annotations
 
 import argparse
+import asyncio
 import json
-import os
+import math
 import secrets
 import subprocess
 import sys
-import tempfile
+import time
 from pathlib import Path
+from unittest.mock import patch
 
-# Allow ``python scripts/cloud_smoke.py`` from a fresh checkout without
-# installing the package into the CI runner's site-packages.
 _REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPOSITORY_ROOT))
 
-from mediakit_toolkit.cloud_smoke import (
-    SmokeResult,
-    assert_terminal_completed,
-    build_poll_arguments,
-    build_trim_arguments,
-    download_result,
-    extract_result_url,
-    extract_task_id,
-    require_api_key,
-    run_json_command,
-)
+from mediakit_toolkit.cloud_smoke import require_api_key, require_cli
+from mediakit_toolkit.errors import MediaKitConfigurationError, MediaKitTaskError
 from mediakit_toolkit.redaction import redact_text
 
 
+def validate_options(*, confirm_billing, duration_seconds, poll_interval,
+                     max_attempts, client_token):
+    if not confirm_billing:
+        raise MediaKitConfigurationError("必须显式指定 --confirm-billing；本次会提交真实付费任务。")
+    if not math.isfinite(duration_seconds) or not 1 < duration_seconds <= 3:
+        raise MediaKitConfigurationError("测试素材时长必须大于 1 秒且不超过 3 秒。")
+    if not 2 <= poll_interval <= 60 or not 1 <= max_attempts <= 5000:
+        raise MediaKitConfigurationError("轮询间隔须为 2～60 秒，次数须为 1～5000。")
+    if client_token and (len(client_token) > 64 or any(not 32 <= ord(c) <= 126 for c in client_token)):
+        raise MediaKitConfigurationError("client_token 须为不超过 64 字符的可打印 ASCII。")
+
+
 def _create_fixture(path: Path, duration_seconds: float) -> None:
-    """Create a tiny synthetic MP4 using ffmpeg; fail clearly if unavailable."""
-    completed = subprocess.run(
-        [
-            "ffmpeg",
-            "-y",
-            "-hide_banner",
-            "-loglevel",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            "testsrc=size=320x240:rate=15",
-            "-f",
-            "lavfi",
-            "-i",
-            "sine=frequency=440:sample_rate=8000",
-            "-t",
-            str(duration_seconds),
-            "-c:v",
-            "libx264",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            "-shortest",
-            str(path),
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    completed = subprocess.run([
+        "ffmpeg", "-n", "-hide_banner", "-loglevel", "error",
+        "-f", "lavfi", "-i", "testsrc=size=320x240:rate=15",
+        "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=8000",
+        "-t", str(duration_seconds), "-c:v", "libx264", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-shortest", str(path),
+    ], capture_output=True, text=True, check=False, timeout=60, shell=False)
     if completed.returncode != 0:
-        raise RuntimeError(
-            "无法使用 ffmpeg 创建测试视频：\n"
-            + redact_text((completed.stderr or completed.stdout)[-2000:])
-        )
+        raise RuntimeError("无法创建测试素材：" + redact_text(completed.stderr[-2000:]))
 
 
-def run_smoke(
-    *,
-    work_dir: Path,
-    duration_seconds: float,
-    poll_interval: int,
-    max_attempts: int,
-    client_token: str | None = None,
-) -> SmokeResult:
+def _load_runtime(comfy_root: Path):
+    if not (comfy_root / "comfy_api/latest/_io.py").is_file():
+        raise MediaKitConfigurationError("--comfy-root 必须指向真实 ComfyUI 源码。")
+    sys.path.insert(0, str(comfy_root.resolve()))
+    # ComfyUI imports its argument parser and device setup: don't expose smoke
+    # arguments to it and force CPU. No server or desktop application is started.
+    original_argv = sys.argv
+    try:
+        sys.argv = [sys.argv[0], "--cpu"]
+        from comfy_api.latest import InputImpl
+        from mediakit_toolkit.nodes.video_editing import MediaKitTrimVideo
+        import mediakit_toolkit.orchestrator as orchestrator
+        import av
+    finally:
+        sys.argv = original_argv
+    return InputImpl.VideoFromFile, MediaKitTrimVideo, orchestrator, av
+
+
+def _inspect_output(path: Path, av) -> dict:
+    if not path.is_file() or path.stat().st_size <= 0:
+        raise MediaKitTaskError("节点输出文件为空。")
+    with av.open(str(path)) as container:
+        if not container.streams.video:
+            raise MediaKitTaskError("节点输出没有视频流。")
+        stream = container.streams.video[0]
+        width, height = stream.codec_context.width, stream.codec_context.height
+        duration = float(stream.duration * stream.time_base) if stream.duration is not None else None
+        decoded_frames = sum(1 for _ in container.decode(stream))
+    if decoded_frames <= 0 or (width, height) != (320, 240):
+        raise MediaKitTaskError("节点输出解码或分辨率校验失败。")
+    if duration is None or not 0.75 <= duration <= 1.25:
+        raise MediaKitTaskError("节点输出不是预期约 1 秒视频。")
+    return {"downloaded_bytes": path.stat().st_size, "decoded_frames": decoded_frames,
+            "width": width, "height": height, "duration_seconds": duration}
+
+
+def run_smoke(*, work_dir: Path, comfy_root: Path, confirm_billing: bool,
+              duration_seconds: float, poll_interval: int, max_attempts: int,
+              client_token: str = "") -> dict:
+    validate_options(confirm_billing=confirm_billing, duration_seconds=duration_seconds,
+                     poll_interval=poll_interval, max_attempts=max_attempts, client_token=client_token)
     require_api_key()
+    require_cli()
+    video_from_file, node, orchestrator, av = _load_runtime(comfy_root)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    state_path = work_dir / "smoke-state.json"
+    state = {"status": "prepared", "client_token": client_token or "mediakit-smoke-" + secrets.token_hex(16),
+             "task_id": None, "paid_submissions": 0, "node": "MediaKitTrimVideo"}
+    # Exclusive creation is a local rerun guard. Never delete this evidence or
+    # automatically resubmit after a timeout/lost response. Query the original ID.
+    try:
+        with state_path.open("x", encoding="utf-8") as stream:
+            json.dump(state, stream, ensure_ascii=False, indent=2)
+    except FileExistsError as exc:
+        raise MediaKitConfigurationError(
+            "该目录已有 smoke-state.json，拒绝重复提交；请查询原 task_id。"
+        ) from exc
+
+    def save_state():
+        state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+
     fixture = work_dir / "smoke-input.mp4"
     output = work_dir / "smoke-output.mp4"
-    _create_fixture(fixture, duration_seconds)
+    original_cli = orchestrator.run_cli_async
 
-    # One fresh idempotency token per smoke run. A retried submit with this
-    # same token returns the original task instead of creating a second billable
-    # task; a new run always mints a different token.
-    token = client_token or ("mediakit-smoke-" + secrets.token_hex(16))
+    async def guarded_cli(arguments, **kwargs):
+        if "trim-video" in arguments:
+            kwargs["timeout"] = min(kwargs.get("timeout", 180), 180)
+            if state["paid_submissions"]:
+                raise MediaKitTaskError("冒烟禁止第二次付费提交。")
+            if "--cloud" not in arguments or "--client-token" not in arguments:
+                raise MediaKitTaskError("真实节点缺少云端模式或幂等 token。")
+            if arguments[arguments.index("--client-token") + 1] != state["client_token"]:
+                raise MediaKitTaskError("真实节点未透传预先保存的 token。")
+            state.update(status="submitting", paid_submissions=1)
+            save_state()  # Persist before sending; lost response must not trigger retry.
+        elif "query-task" not in arguments:
+            raise MediaKitTaskError("冒烟不允许其它业务调用。")
+        result = await original_cli(arguments, **kwargs)
+        task_id = result.payload.get("task_id")
+        if task_id:
+            state["task_id"] = task_id
+        if "query-task" in arguments:
+            state["task_id"] = arguments[arguments.index("--task-id") + 1]
+            state["last_status"] = result.payload.get("status")
+        save_state()
+        return result
 
-    # Trim a 2s clip to 1s: the smallest valid cloud editing task.
-    submit_payload = run_json_command(
-        build_trim_arguments(
-            fixture,
-            start_time=0.0,
-            end_time=1.0,
-            client_token=token,
-        ),
-        timeout=300,
-    )
-    task_id = extract_task_id(submit_payload)
+    async def execute():
+        with patch.object(orchestrator, "run_cli_async", guarded_cli):
+            result = await asyncio.wait_for(node.execute(
+                video=video_from_file(str(fixture)), start_time=0.0, end_time=1.0,
+                run_mode="cloud", poll_interval_seconds=poll_interval,
+                max_poll_attempts=max_attempts, client_token=state["client_token"],
+            ), timeout=600)
+        # This is the native VIDEO returned by the real node/media bridge.
+        await asyncio.to_thread(result[0].save_to, str(output))
 
-    # Poll in bounded loops: one CLI --poll-complete window is capped at
-    # 9 minutes, and a long task can return running at the window boundary.
-    # Reuse the same task_id; never resubmit the paid task. The same terminal
-    # guard as the production orchestrator is used so a window-boundary
-    # ``running`` response cannot be mistaken for completion.
-    terminal_payload: dict[str, object] = {}
-    for _ in range(max(1, 600 // (poll_interval or 5))):
-        terminal_payload = run_json_command(
-            build_poll_arguments(
-                task_id,
-                poll_interval_seconds=poll_interval,
-                max_poll_attempts=max_attempts,
-            ),
-            timeout=900,
-        )
-        if terminal_payload.get("status") in (
-            "completed",
-            "failed",
-            "canceled",
-            "cancelled",
-        ) or terminal_payload.get("success") is False:
-            break
-    assert_terminal_completed(terminal_payload)
-    result_url = extract_result_url(terminal_payload)
-    downloaded_bytes = download_result(result_url, output)
-    return SmokeResult(
-        submit_payload=submit_payload,
-        terminal_payload=terminal_payload,
-        result_url=result_url,
-        downloaded_bytes=downloaded_bytes,
-        output_path=output,
-    )
+    started = time.monotonic()
+    try:
+        _create_fixture(fixture, duration_seconds)
+        asyncio.run(execute())
+        report = _inspect_output(output, av)
+        state.update(status="passed", elapsed_seconds=round(time.monotonic() - started, 2), **report)
+    except Exception as exc:
+        state.update(status="failed", error=redact_text(str(exc)),
+                     note="Do not resubmit. Query the original task_id; a missing response does not prove no charge.")
+        save_state()
+        raise
+    save_state()
+    return state
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run one paid MediaKit cloud smoke test.")
-    parser.add_argument("--work-dir", default="")
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--confirm-billing", action="store_true")
+    parser.add_argument("--comfy-root", required=True)
+    parser.add_argument("--work-dir", default="./cloud-smoke-artifacts")
     parser.add_argument("--duration-seconds", type=float, default=2.0)
     parser.add_argument("--poll-interval-seconds", type=int, default=5)
     parser.add_argument("--max-poll-attempts", type=int, default=60)
-    parser.add_argument(
-        "--client-token",
-        default="",
-        help=(
-            "Optional idempotency token (max 64 ASCII chars). A fresh token is "
-            "minted per run; pass a fixed value only when deliberately retrying "
-            "the same paid submission so the backend does not double-bill."
-        ),
-    )
+    parser.add_argument("--client-token", default="")
     args = parser.parse_args()
-
-    if args.duration_seconds <= 1.0:
-        parser.error("--duration-seconds must be greater than 1.0")
-
-    if args.work_dir:
-        work_dir = Path(args.work_dir).expanduser().resolve()
-        work_dir.mkdir(parents=True, exist_ok=True)
-        context = None
-    else:
-        context = tempfile.TemporaryDirectory(prefix="mediakit-smoke-")
-        work_dir = Path(context.name)
-
-    try:
-        result = run_smoke(
-            work_dir=work_dir,
-            duration_seconds=args.duration_seconds,
-            poll_interval=args.poll_interval_seconds,
-            max_attempts=args.max_poll_attempts,
-            client_token=args.client_token or None,
-        )
-    finally:
-        if context is not None:
-            context.cleanup()
-
-    summary = {
-        "status": "passed",
-        "task_id": result.terminal_payload.get("task_id"),
-        "downloaded_bytes": result.downloaded_bytes,
-        "output_exists": result.output_path.is_file(),
-        "billing_usage": result.terminal_payload.get("usage"),
-    }
-    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    result = run_smoke(work_dir=Path(args.work_dir).resolve(), comfy_root=Path(args.comfy_root).resolve(),
+                       confirm_billing=args.confirm_billing, duration_seconds=args.duration_seconds,
+                       poll_interval=args.poll_interval_seconds, max_attempts=args.max_poll_attempts,
+                       client_token=args.client_token)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
 
 
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except Exception as exc:  # Surface one readable, redacted failure line.
+    except Exception as exc:
         print(json.dumps({"status": "failed", "error": redact_text(str(exc))}, ensure_ascii=False), file=sys.stderr)
         raise SystemExit(1)

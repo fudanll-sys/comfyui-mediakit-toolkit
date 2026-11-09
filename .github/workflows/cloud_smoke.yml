@@ -23,19 +23,20 @@ on:
         required: false
         default: "60"
 
-# A single fixed concurrency group: at most one paid smoke run at a time. A new
-# dispatch while one is running is cancelled, so two runs can never submit
-# concurrent billable tasks.
+# A fixed group serializes paid runs. With cancel-in-progress=false an active
+# run is NOT cancelled; another dispatch can wait and later create a new task.
+# Concurrency is not a billing quota and does not deduplicate sequential runs.
 concurrency:
   group: mediakit-cloud-smoke
   cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   paid-cloud-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      MEDIAKIT_API_KEY: ${{ secrets.MEDIAKIT_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,6 +47,8 @@ jobs:
           node-version: "20"
       - name: Verify required secret exists
         shell: bash
+        env:
+          MEDIAKIT_API_KEY: ${{ secrets.MEDIAKIT_API_KEY }}
         run: |
           if [ -z "${MEDIAKIT_API_KEY}" ]; then
             echo "::error::Repository secret MEDIAKIT_API_KEY is not configured. Add it under Settings -> Secrets and variables -> Actions before running this paid smoke workflow."
@@ -53,8 +56,10 @@ jobs:
           fi
       - name: Require explicit billing confirmation
         shell: bash
+        env:
+          CONFIRM_BILLING: ${{ inputs.confirm_billing }}
         run: |
-          if [ "${{ github.event.inputs.confirm_billing }}" != "true" ]; then
+          if [ "$CONFIRM_BILLING" != "true" ]; then
             echo "::error::This workflow submits a real billable MediaKit task. Set 'confirm_billing' to true to proceed."
             exit 1
           fi
@@ -66,18 +71,37 @@ jobs:
           npx -y @volcengine/mediakit-cli install -y
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           mediakit-cli --version
-      - name: Run one minimal paid cloud trim task
+      - name: Prepare real ComfyUI node runtime
+        uses: actions/checkout@v4
+        with:
+          repository: Comfy-Org/ComfyUI
+          ref: fca60fe70e5b84c5c6b058263653d15cb3401e44
+          path: .smoke-comfyui
+      - name: Install ComfyUI CPU dependencies
         shell: bash
         run: |
+          python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r .smoke-comfyui/requirements.txt
+      - name: Run one minimal paid cloud trim task
+        shell: bash
+        env:
+          MEDIAKIT_API_KEY: ${{ secrets.MEDIAKIT_API_KEY }}
+          SMOKE_POLL_INTERVAL: ${{ inputs.poll_interval_seconds }}
+          SMOKE_MAX_ATTEMPTS: ${{ inputs.max_poll_attempts }}
+          SMOKE_CLIENT_TOKEN: ${{ inputs.client_token }}
+        run: |
           python -m unittest discover -s tests -q
+          python scripts/verify_paid_smoke_contract.py --comfy-root ./.smoke-comfyui
           python scripts/cloud_smoke.py \
+            --confirm-billing \
+            --comfy-root ./.smoke-comfyui \
             --work-dir ./cloud-smoke-artifacts \
             --duration-seconds 2 \
-            --poll-interval-seconds "${{ github.event.inputs.poll_interval_seconds }}" \
-            --max-poll-attempts "${{ github.event.inputs.max_poll_attempts }}" \
-            ${{ github.event.inputs.client_token && format('--client-token "{0}"', github.event.inputs.client_token) || '' }}
-      - name: Upload smoke artifacts on failure
-        if: failure()
+            --poll-interval-seconds "$SMOKE_POLL_INTERVAL" \
+            --max-poll-attempts "$SMOKE_MAX_ATTEMPTS" \
+            --client-token "$SMOKE_CLIENT_TOKEN"
+      - name: Upload smoke report and synthetic media
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mediakit-cloud-smoke-${{ github.run_id }}

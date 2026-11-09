@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   unit:
     strategy:
@@ -18,7 +21,32 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Compile package
-        run: python -m compileall -q mediakit_toolkit tests
+        run: python -m compileall -q mediakit_toolkit tests scripts
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
 
+  workflow-and-node-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Parse and validate manual-only workflow
+        run: |
+          python -m pip install PyYAML
+          python -c "import yaml; d=yaml.safe_load(open('.github/workflows/cloud_smoke.yml')); triggers=d.get('on',d.get(True)); assert set(triggers)=={'workflow_dispatch'}; assert triggers['workflow_dispatch']['inputs']['confirm_billing']['default'] is False"
+      - uses: actions/checkout@v4
+        with:
+          repository: Comfy-Org/ComfyUI
+          ref: fca60fe70e5b84c5c6b058263653d15cb3401e44
+          path: .smoke-comfyui
+      - name: Install real ComfyUI CPU runtime
+        run: |
+          python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r .smoke-comfyui/requirements.txt
+      - name: Verify real node and native output without any paid cloud call
+        run: |
+          python scripts/verify_comfy_contracts.py --comfy-root .smoke-comfyui
+          python scripts/verify_paid_smoke_contract.py --comfy-root .smoke-comfyui

@@ -509,6 +509,7 @@ def build_trim_video_arguments(
     start_time: float,
     end_time: float | None = None,
     run_mode: str = "cloud",
+    client_token: str | None = None,
 ) -> list[str]:
     """Build a video trim command for cloud or local execution."""
     if run_mode not in {"cloud", "local"}:
@@ -517,11 +518,20 @@ def build_trim_video_arguments(
         raise MediaKitInputError("裁剪开始时间不能为负数。")
     if end_time is not None and end_time <= start_time:
         raise MediaKitInputError("裁剪结束时间必须大于开始时间。")
+    if client_token is not None and (
+        not client_token or len(client_token) > 64
+        or any(not 32 <= ord(c) <= 126 for c in client_token)
+    ):
+        raise MediaKitInputError(
+            "client_token 必须是非空 ASCII 字符串且长度不超过 64。"
+        )
     prefix = ["--local"] if run_mode == "local" else ["--cloud"]
     arguments = prefix + ["editing", "trim-video", "--video-url", video_path]
     arguments.extend(["--start-time", str(start_time)])
     if end_time is not None:
         arguments.extend(["--end-time", str(end_time)])
+    if client_token is not None:
+        arguments.extend(["--client-token", client_token])
     return arguments
 
 

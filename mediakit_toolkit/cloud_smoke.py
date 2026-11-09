@@ -110,7 +110,8 @@ def build_trim_arguments(
     """
     if end_time <= start_time:
         raise MediaKitTaskError("冒烟裁剪结束时间必须大于开始时间。")
-    if not client_token or not client_token.isascii() or len(client_token) > 64:
+    if (not client_token or len(client_token) > 64
+            or any(not 32 <= ord(c) <= 126 for c in client_token)):
         raise MediaKitTaskError(
             "client_token 必须是非空 ASCII 字符串且长度不超过 64。"
         )

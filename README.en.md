@@ -480,34 +480,38 @@ validation must be performed manually with a short, authorized test video.
 
 ### Paid cloud smoke test (manual only)
 
-The repository ships a `Cloud Smoke (paid, manual)` GitHub Actions workflow and
-`scripts/cloud_smoke.py` to verify the real cloud path (authentication, async
-submission, polling, and result download):
+The manual workflow runs a pinned, real ComfyUI CPU runtime through
+`VideoFromFile → MediaKitTrimVideo.execute → native VIDEO save → PyAV decode`.
+It exercises the production node, media bridge, orchestrator and CLI, then checks
+that the output is decodable and approximately one second long.
+**A configured workflow is not evidence of a passing paid cloud E2E run.**
 
-- The workflow uses `workflow_dispatch` only; it never runs on push or pull requests.
-- You must explicitly set `confirm_billing` to `true` when dispatching it,
-  acknowledging that the run creates a real billable task; otherwise it fails
-  before any paid call.
-- A fixed concurrency group allows only one smoke run at a time, so concurrent
-  dispatches can never create multiple billable tasks.
-- Each run submits exactly one minimal 1-second billable `trim-video` task with
-  an idempotent `client_token`: an auto-minted token makes each run a distinct new
-  task, while passing a fixed token when retrying the same submission makes the
-  backend return the original task (24h idempotency) instead of double-billing.
-- Before running it, configure `MEDIAKIT_API_KEY` under Settings → Secrets and
-  variables → Actions. The key is injected only through GitHub Secrets and is never
-  written to code or logs.
-- API keys and signed-URL query parameters are redacted; only diagnostic artifacts
-  are uploaded on failure.
+- `workflow_dispatch` only, with explicit `confirm_billing=true`. Local execution
+  also requires `--confirm-billing`; push/PR never triggers paid work.
+- A fixed concurrency group serializes runs; it is not a billing quota. A queued
+  run may later submit another billable task.
+- At most one submission per run, without automatic submit retries. A token is
+  persisted to `smoke-state.json` before sending, and task_id is saved on receipt.
+- Reusing an output directory with existing state refuses to submit again.
+  A timeout does not cancel the remote task or prove there was no charge.
+  Query an existing task_id instead of resubmitting. A fixed token helps backend
+  idempotency but cannot guarantee deduplication if the uploaded input URL changes.
+- Configure repository Secret `MEDIAKIT_API_KEY`; never put the key in command
+  arguments, source files or workflow YAML.
+- The synthetic two-second input is trimmed to 0–1 seconds. The node phase is
+  capped at ten minutes and polling has a total interval×attempts deadline.
+- Success/failure reports and synthetic media are uploaded. No API key or signed
+  result URL is stored in the report.
 
-Run it locally after installing `mediakit-cli`, `ffmpeg`, and authenticating (a
-local run also creates one real billable task):
+For local execution, use the Python environment of a real ComfyUI checkout with
+its dependencies, official `mediakit-cli` and `ffmpeg` (this incurs a real charge):
 
 ```bash
-python scripts/cloud_smoke.py --duration-seconds 2
-# Retry the same submission without double-billing by passing a fixed token:
-python scripts/cloud_smoke.py --client-token mediakit-smoke-xxxx
+python scripts/cloud_smoke.py --confirm-billing \
+  --comfy-root /path/to/ComfyUI --work-dir ./cloud-smoke-artifacts
 ```
+
+Preserve state after failure; inspect its task_id/token before considering a new run.
 
 See [SECURITY.md](./SECURITY.md) for the Registry publishing and security self-review.
 

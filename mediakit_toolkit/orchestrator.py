@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from time import monotonic
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -199,23 +201,44 @@ async def _poll_until_terminal(
     window ends. Re-issue the *same* task_id until a terminal state arrives so a
     long-running task is never mistaken for completion and never duplicated.
     """
-    # Each query window is capped at 9 minutes; 120 windows bounds the worst
-    # case while still covering multi-hour tasks without an unbounded loop.
+    if poll_interval_seconds <= 0 or max_poll_attempts <= 0:
+        raise MediaKitTaskError("轮询间隔和次数必须为正数。")
+    # max_poll_attempts is a total waiting budget, not multiplied by 120
+    # independent CLI windows. Queries are read-only and never resubmit.
+    deadline = monotonic() + poll_interval_seconds * max_poll_attempts
     for _ in range(120):
-        result = await run_cli_async(
-            build_query_arguments(
-                task_id,
-                poll_interval_seconds=poll_interval_seconds,
-                max_poll_attempts=max_poll_attempts,
-            ),
-            timeout=max(600, poll_interval_seconds * max_poll_attempts + 300),
-        )
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            break
+        window_attempts = max(1, min(
+            max_poll_attempts,
+            int(min(540, remaining) / poll_interval_seconds),
+        ))
+        try:
+            result = await asyncio.wait_for(
+                run_cli_async(
+                    build_query_arguments(
+                        task_id,
+                        poll_interval_seconds=poll_interval_seconds,
+                        max_poll_attempts=window_attempts,
+                    ),
+                    timeout=min(600, remaining),
+                ),
+                timeout=remaining,
+            )
+        except (asyncio.TimeoutError, TimeoutError):
+            break
         payload = _flatten_result(result.payload) if flatten else result.payload
         status = payload.get("status")
         if status in _TERMINAL_STATUSES or payload.get("success") is False:
             return payload
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            break
+        await asyncio.sleep(min(poll_interval_seconds, remaining))
     raise MediaKitTaskError(
-        f"MediaKit 任务 {capability} 在限定轮询窗口内未进入终态，task_id 已保留。"
+        f"MediaKit 任务 {capability} 未在总轮询时间内进入终态，"
+        f"请查询原 task_id={task_id}，不要重新提交。"
     )
 
 
@@ -462,6 +485,7 @@ async def trim_video(
     run_mode: str = "auto",
     poll_interval_seconds: int,
     max_poll_attempts: int,
+    client_token: str | None = None,
 ) -> tuple[str, str]:
     """Trim a video locally when supported, otherwise through the cloud."""
     mode = resolve_run_mode("editing", "trim-video", run_mode)
@@ -483,6 +507,7 @@ async def trim_video(
             start_time=start_time,
             end_time=end_time,
             run_mode="cloud",
+            client_token=client_token,
         ),
         capability="editing-trim-video",
         poll_interval_seconds=poll_interval_seconds,

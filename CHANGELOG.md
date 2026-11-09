@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Remove workflow input interpolation from shell commands; use quoted environment
+  variables, read-only workflow permissions and a narrowly scoped API key.
+- Paid smoke now calls the actual MediaKitTrimVideo node in a pinned ComfyUI CPU
+  runtime, saves native VIDEO and validates frames/resolution/~1s duration with PyAV.
+- Require billing consent locally too; persist token/task_id before/after the single
+  submission, reject reruns in the same directory, and retain success/failure reports.
+- Bound production polling by an actual interval×attempts deadline, reuse task_id
+  across windows and keep the ID in timeout errors. Cap the smoke node at 10 minutes.
+- Correct concurrency/idempotency claims and Registry diagnosis: zero indexed nodes
+  is a clue, not a confirmed Flagged cause. No new Registry version is submitted.
+
 ## 0.5.4 - 2026-11-09
 
 ### 付费冒烟安全加固（手动工作流）

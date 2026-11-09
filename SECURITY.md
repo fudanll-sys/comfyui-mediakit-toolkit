@@ -54,10 +54,10 @@ curl -s https://api.comfy.org/nodes/mediakit-toolkit/versions/<version> \
 - 关键线索：`GET /comfy-nodes?node_id=mediakit-toolkit` 的 `total=0`，即 Registry
   静态分析没有从发布包提取到任何节点。对比正常上架的 V1 包（如
   comfyui-videohelpersuite，`total=40`），其根 `__init__.py` 直接导出
-  `NODE_CLASS_MAPPINGS`；本包只使用 V3 的 `comfy_entrypoint`，Registry 的静态
-  索引器目前无法据此提取节点，这是最可能的 Flagged 根因。运行时 ComfyUI 加载器
-  （nodes.py）已支持 V3，因此本地/Manager 安装后可正常加载，差异仅在 Registry
-  的离线提取链路。
+  `NODE_CLASS_MAPPINGS`；本包只使用 V3 的 `comfy_entrypoint`。这提示可能存在 V3
+  静态索引兼容问题，但 `total=0` 只能证明公开索引没有节点记录，不能证明索引器
+  不支持 V3，更不能据此断定 Flagged 原因。此前本地加载验证与云端审核是两条
+  独立证据链；需后台审核原因或官方确认才能决定是否改注册入口。
 - 已在仓库侧修复的审核项：补充方形图标 `[tool.comfy].Icon`、`SECURITY.md`
   安全自查（无 eval/exec、无运行时 pip、无混淆、无维护者中转、Key/URL 脱敏）。
 - 仍需人工处理：登录

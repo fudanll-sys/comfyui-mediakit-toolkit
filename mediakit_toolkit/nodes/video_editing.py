@@ -130,10 +130,12 @@ class MediaKitTrimVideo(io.ComfyNode):
         run_mode: str = "auto",
         poll_interval_seconds: int = 10,
         max_poll_attempts: int = 720,
+        client_token: str | None = None,
     ) -> io.NodeOutput:
         if end_time <= start_time:
             end_time = None
         with materialize_video(video) as video_path:
+            token_args = {"client_token": client_token} if client_token is not None else {}
             result_url, _task_id = await trim_video(
                 video_path,
                 start_time=start_time,
@@ -141,6 +143,7 @@ class MediaKitTrimVideo(io.ComfyNode):
                 run_mode=run_mode,
                 poll_interval_seconds=poll_interval_seconds,
                 max_poll_attempts=max_poll_attempts,
+                **token_args,
             )
         return io.NodeOutput(await download_video_output(result_url))
 
