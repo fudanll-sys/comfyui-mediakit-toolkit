@@ -38,7 +38,7 @@ class PaidSmokeSafetyTests(unittest.TestCase):
         self.assertEqual(args[-1], token)
 
     def test_workflow_has_no_expression_in_run_blocks(self):
-        lines = (ROOT / ".github/workflows/cloud_smoke.yml").read_text().splitlines()
+        lines = (ROOT / ".github/workflows/cloud_smoke.yml").read_text(encoding="utf-8").splitlines()
         in_run = False
         indentation = 0
         for line in lines:
@@ -60,7 +60,7 @@ class PaidSmokeSafetyTests(unittest.TestCase):
     def runtime(self, directory, *, repeat=False, fail=False):
         async def real_cli(args, **kwargs):
             # State exists before submission and never contains secrets/URLs.
-            state = json.loads((directory / "smoke-state.json").read_text())
+            state = json.loads((directory / "smoke-state.json").read_text(encoding="utf-8"))
             self.assertEqual(state["paid_submissions"], 1)
             return CommandResult({"task_id": "task-original", "status": "completed"}, "", "", 0)
         orchestrator = SimpleNamespace(run_cli_async=AsyncMock(side_effect=real_cli))
@@ -110,7 +110,7 @@ class PaidSmokeSafetyTests(unittest.TestCase):
             path = Path(directory)
             with self.assertRaises(TimeoutError):
                 self.run_mock_smoke(path, fail=True)
-            state = json.loads((path / "smoke-state.json").read_text())
+            state = json.loads((path / "smoke-state.json").read_text(encoding="utf-8"))
             self.assertEqual(state["task_id"], "task-original")
             self.assertEqual(state["paid_submissions"], 1)
             self.assertEqual(state["status"], "failed")
@@ -120,7 +120,7 @@ class PaidSmokeSafetyTests(unittest.TestCase):
             path = Path(directory)
             with self.assertRaises(MediaKitTaskError):
                 self.run_mock_smoke(path, repeat=True)
-            self.assertEqual(json.loads((path / "smoke-state.json").read_text())["paid_submissions"], 1)
+            self.assertEqual(json.loads((path / "smoke-state.json").read_text(encoding="utf-8"))["paid_submissions"], 1)
 
     def test_output_inspection_rejects_bad_duration_or_no_frames(self):
         with tempfile.TemporaryDirectory() as directory:
