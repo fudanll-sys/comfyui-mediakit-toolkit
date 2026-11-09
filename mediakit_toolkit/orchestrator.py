@@ -182,6 +182,43 @@ async def enhance_video_generative(
     )
 
 
+_TERMINAL_STATUSES = ("completed", "failed", "canceled", "cancelled")
+
+
+async def _poll_until_terminal(
+    task_id: str,
+    *,
+    poll_interval_seconds: int,
+    max_poll_attempts: int,
+    capability: str,
+    flatten: bool,
+) -> dict[str, Any]:
+    """Poll one task_id across CLI 9-minute windows without resubmitting.
+
+    A single ``query-task --poll-complete`` call can return ``running`` when the
+    window ends. Re-issue the *same* task_id until a terminal state arrives so a
+    long-running task is never mistaken for completion and never duplicated.
+    """
+    # Each query window is capped at 9 minutes; 120 windows bounds the worst
+    # case while still covering multi-hour tasks without an unbounded loop.
+    for _ in range(120):
+        result = await run_cli_async(
+            build_query_arguments(
+                task_id,
+                poll_interval_seconds=poll_interval_seconds,
+                max_poll_attempts=max_poll_attempts,
+            ),
+            timeout=max(600, poll_interval_seconds * max_poll_attempts + 300),
+        )
+        payload = _flatten_result(result.payload) if flatten else result.payload
+        status = payload.get("status")
+        if status in _TERMINAL_STATUSES or payload.get("success") is False:
+            return payload
+    raise MediaKitTaskError(
+        f"MediaKit 任务 {capability} 在限定轮询窗口内未进入终态，task_id 已保留。"
+    )
+
+
 async def _run_cloud_video_task(
     submit_arguments: list[str],
     *,
@@ -195,16 +232,14 @@ async def _run_cloud_video_task(
         submit = await run_cli_async(submit_arguments)
         task_id = _task_id(submit.payload)
         log_event("task_submitted", capability=capability, task_id=task_id)
-        wait_timeout = max(600, poll_interval_seconds * max_poll_attempts + 300)
-        result = await run_cli_async(
-            build_query_arguments(
-                task_id,
-                poll_interval_seconds=poll_interval_seconds,
-                max_poll_attempts=max_poll_attempts,
-            ),
-            timeout=wait_timeout,
+        payload = await _poll_until_terminal(
+            task_id,
+            poll_interval_seconds=poll_interval_seconds,
+            max_poll_attempts=max_poll_attempts,
+            capability=capability,
+            flatten=True,
         )
-        result_url = _result_video_url(result.payload)
+        result_url = _result_video_url(payload)
         log_event("task_completed", capability=capability, task_id=task_id)
         return result_url, task_id
     except Exception as exc:
@@ -277,17 +312,15 @@ async def _run_cloud_task(
         submit = await run_cli_async(submit_arguments)
         task_id = _task_id(submit.payload)
         log_event("task_submitted", capability=capability, task_id=task_id)
-        wait_timeout = max(600, poll_interval_seconds * max_poll_attempts + 300)
-        result = await run_cli_async(
-            build_query_arguments(
-                task_id,
-                poll_interval_seconds=poll_interval_seconds,
-                max_poll_attempts=max_poll_attempts,
-            ),
-            timeout=wait_timeout,
+        payload = await _poll_until_terminal(
+            task_id,
+            poll_interval_seconds=poll_interval_seconds,
+            max_poll_attempts=max_poll_attempts,
+            capability=capability,
+            flatten=True,
         )
         log_event("task_completed", capability=capability, task_id=task_id)
-        return _flatten_result(result.payload), task_id
+        return payload, task_id
     except Exception as exc:
         log_event(
             "task_failed",

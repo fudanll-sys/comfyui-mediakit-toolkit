@@ -90,7 +90,9 @@ def run_smoke(*, work_dir: Path, duration_seconds: float, poll_interval: int, ma
 
     # Poll in bounded loops: one CLI --poll-complete window is capped at
     # 9 minutes, and a long task can return running at the window boundary.
-    # Reuse the same task_id; never resubmit the paid task.
+    # Reuse the same task_id; never resubmit the paid task. The same terminal
+    # guard as the production orchestrator is used so a window-boundary
+    # ``running`` response cannot be mistaken for completion.
     terminal_payload: dict[str, object] = {}
     for _ in range(max(1, 600 // (poll_interval or 5))):
         terminal_payload = run_json_command(

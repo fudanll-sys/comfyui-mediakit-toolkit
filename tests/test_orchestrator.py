@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 from mediakit_toolkit.cli import CommandResult
 from mediakit_toolkit.orchestrator import (
+    _poll_until_terminal,
     analyze_video_highlights,
     asr_video_subtitles,
     enhance_video,
@@ -267,6 +268,48 @@ class VideoUnderstandingOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             find_subtitle_url(payload), "https://x/a.srt"
         )
+
+
+class CloudPollWindowTests(unittest.IsolatedAsyncioTestCase):
+    """The poller must re-query the same task_id across 9-minute CLI windows."""
+
+    @patch("mediakit_toolkit.orchestrator.run_cli_async", new_callable=AsyncMock)
+    async def test_running_window_then_completed_reuses_task_id(self, run_cli_async):
+        run_cli_async.side_effect = [
+            CommandResult({"task_id": "t1", "status": "running"}, "", "", 0),
+            CommandResult(
+                {"status": "completed", "video_url": "https://example.com/x.mp4"},
+                "", "", 0,
+            ),
+        ]
+        payload = await _poll_until_terminal(
+            "t1",
+            poll_interval_seconds=5,
+            max_poll_attempts=10,
+            capability="editing-trim-video",
+            flatten=True,
+        )
+        self.assertEqual(payload["status"], "completed")
+        # Two query calls, both referencing the same task id; no resubmission.
+        self.assertEqual(run_cli_async.await_count, 2)
+        for call in run_cli_async.await_args_list:
+            args = call.args[0]
+            self.assertEqual(args[args.index("--task-id") + 1], "t1")
+
+    @patch("mediakit_toolkit.orchestrator.run_cli_async", new_callable=AsyncMock)
+    async def test_failed_terminal_is_surfaced_not_retried(self, run_cli_async):
+        run_cli_async.return_value = CommandResult(
+            {"task_id": "t2", "status": "failed", "success": False}, "", "", 0
+        )
+        payload = await _poll_until_terminal(
+            "t2",
+            poll_interval_seconds=5,
+            max_poll_attempts=10,
+            capability="video-enhance-video",
+            flatten=False,
+        )
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(run_cli_async.await_count, 1)
 
 
 class RunModeTests(unittest.TestCase):

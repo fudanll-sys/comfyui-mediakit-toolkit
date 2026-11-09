@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.3 - 2026-11-09
+
+- Harden cloud polling in the production orchestrator (`_run_cloud_task` /
+  `_run_cloud_video_task`) the same way as the paid smoke script: a new
+  `_poll_until_terminal` helper re-queries the *same* `task_id` across the CLI's
+  9-minute `--poll-complete` windows until a terminal state, instead of treating
+  a window-boundary `running` payload as completion. It never resubmits a paid
+  task and fails loudly (with the task id preserved) if no terminal state is
+  reached within a bounded number of windows.
+- Add orchestrator unit tests covering running-window-then-completed reuse of
+  one task id and immediate surfacing of a failed terminal state without retry.
+- Align the paid smoke poller's terminal guard wording with the orchestrator.
+
 ## 0.5.2 - 2026-11-09
 
 - Normalize mode flags before invoking `mediakit-cli`: the current public CLI
