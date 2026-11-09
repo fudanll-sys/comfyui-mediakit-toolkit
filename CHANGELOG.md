@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.2 - 2026-11-09
+
+- Normalize mode flags before invoking `mediakit-cli`: the current public CLI
+  (0.2.2) is cloud-only and rejects the global `--cloud`/`--local` flags the node
+  builders emit. `run_cli` now probes `--help` once and strips `--cloud` only when
+  the binary positively reports the cloud-only interface; it never silently
+  downgrades a requested `--local` (paid) call to cloud and never retries a paid
+  submission. This unblocks the real cloud path for every editing/AI node.
+- Make the paid smoke poller resilient to the CLI's 9-minute `--poll-complete`
+  window: it re-queries with the same `task_id` until a terminal state instead of
+  treating a window-boundary `running` result as completion; it never resubmits.
+- Make cloud smoke unit tests platform-independent (no hardcoded POSIX paths) and
+  CLI-free (patch the executable lookup), so the unit suite is green on
+  Windows/macOS/Linux without `mediakit-cli` on PATH.
+- Add mode-normalization unit tests (cloud-only strip, dual-mode keep, local
+  refusal, passthrough).
+
 ## 0.5.1 - 2026-11-09
 
 - Add a paid, manual-only cloud smoke test (`scripts/cloud_smoke.py` plus the

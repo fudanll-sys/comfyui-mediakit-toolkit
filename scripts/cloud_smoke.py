@@ -88,14 +88,26 @@ def run_smoke(*, work_dir: Path, duration_seconds: float, poll_interval: int, ma
     )
     task_id = extract_task_id(submit_payload)
 
-    terminal_payload = run_json_command(
-        build_poll_arguments(
-            task_id,
-            poll_interval_seconds=poll_interval,
-            max_poll_attempts=max_attempts,
-        ),
-        timeout=900,
-    )
+    # Poll in bounded loops: one CLI --poll-complete window is capped at
+    # 9 minutes, and a long task can return running at the window boundary.
+    # Reuse the same task_id; never resubmit the paid task.
+    terminal_payload: dict[str, object] = {}
+    for _ in range(max(1, 600 // (poll_interval or 5))):
+        terminal_payload = run_json_command(
+            build_poll_arguments(
+                task_id,
+                poll_interval_seconds=poll_interval,
+                max_poll_attempts=max_attempts,
+            ),
+            timeout=900,
+        )
+        if terminal_payload.get("status") in (
+            "completed",
+            "failed",
+            "canceled",
+            "cancelled",
+        ) or terminal_payload.get("success") is False:
+            break
     assert_terminal_completed(terminal_payload)
     result_url = extract_result_url(terminal_payload)
     downloaded_bytes = download_result(result_url, output)

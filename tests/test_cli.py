@@ -16,12 +16,14 @@ from mediakit_toolkit.cli import (
     build_segment_scenes_arguments,
     build_trim_video_arguments,
     build_video_ocr_arguments,
+    normalize_mode_arguments,
     parse_final_json,
     run_cli,
     supported_modes,
 )
 from mediakit_toolkit.errors import (
     MediaKitCommandError,
+    MediaKitCompatibilityError,
     MediaKitConfigurationError,
     MediaKitDependencyError,
     MediaKitInputError,
@@ -240,6 +242,58 @@ class EditingCommandBuilderTests(unittest.TestCase):
         # fall back to cloud execution.
         with patch("mediakit_toolkit.cli.run_cli", side_effect=MediaKitDependencyError("missing")):
             self.assertEqual(supported_modes("editing", "trim-video"), set())
+
+
+class ModeNormalizationTests(unittest.TestCase):
+    CLOUD_ONLY_HELP = (
+        "MediaKit CLI provides Cloud media-processing commands and domain "
+        "navigation.\nFlags:\n  -h, --help help for mediakit-cli\n"
+    )
+    DUAL_MODE_HELP = (
+        "Flags:\n      --cloud   Cloud mode\n      --local   Local mode\n"
+    )
+
+    def test_strips_cloud_flag_on_cloud_only_binary(self):
+        with patch("mediakit_toolkit.cli.subprocess.run") as run:
+            run.return_value = subprocess.CompletedProcess(
+                [], 0, self.CLOUD_ONLY_HELP, ""
+            )
+            normalized = normalize_mode_arguments(
+                "/usr/bin/mediakit-cli",
+                ["--cloud", "editing", "trim-video", "--video-url", "in.mp4"],
+            )
+        self.assertEqual(
+            normalized, ["editing", "trim-video", "--video-url", "in.mp4"]
+        )
+
+    def test_keeps_cloud_flag_when_binary_declares_it(self):
+        with patch("mediakit_toolkit.cli.subprocess.run") as run:
+            run.return_value = subprocess.CompletedProcess(
+                [], 0, self.DUAL_MODE_HELP, ""
+            )
+            normalized = normalize_mode_arguments(
+                "mediakit-cli", ["--cloud", "video", "probe-video-metadata"]
+            )
+        self.assertEqual(
+            normalized, ["--cloud", "video", "probe-video-metadata"]
+        )
+
+    def test_never_downgrades_local_to_cloud_on_cloud_only_binary(self):
+        with patch("mediakit_toolkit.cli.subprocess.run") as run:
+            run.return_value = subprocess.CompletedProcess(
+                [], 0, self.CLOUD_ONLY_HELP, ""
+            )
+            with self.assertRaises(MediaKitCompatibilityError):
+                normalize_mode_arguments(
+                    "mediakit-cli",
+                    ["--local", "editing", "trim-video", "--video-url", "in.mp4"],
+                )
+
+    def test_passthrough_when_no_mode_prefix(self):
+        self.assertEqual(
+            normalize_mode_arguments("mediakit-cli", ["shared", "version"]),
+            ["shared", "version"],
+        )
 
 
 class CliExecutionTests(unittest.TestCase):

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from typing import Any, Mapping, Sequence
 
 from .errors import (
     MediaKitCommandError,
+    MediaKitCompatibilityError,
     MediaKitConfigurationError,
     MediaKitDependencyError,
     MediaKitInputError,
@@ -98,6 +100,37 @@ def _classify_failure(payload: Mapping[str, Any], combined: str) -> None:
         )
 
 
+def normalize_mode_arguments(executable: str, arguments: Sequence[str]) -> list[str]:
+    """Probe help before a business call; never retry a paid submission.
+
+    Older binaries expose --cloud/--local. The current cloud-only binary
+    removed both flags. Only strip --cloud when help positively identifies
+    the cloud-only interface. Never downgrade a requested local call to cloud.
+    """
+    args = list(map(str, arguments))
+    if not args or args[0] not in ("--cloud", "--local"):
+        return args
+    try:
+        help_result = subprocess.run(
+            [executable, "--help"], capture_output=True, text=True,
+            timeout=30, shell=False, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise MediaKitCompatibilityError("无法读取 CLI 模式合同；未提交任务。") from exc
+    text = help_result.stdout + "\n" + help_result.stderr
+    if help_result.returncode != 0:
+        raise MediaKitCompatibilityError("CLI help 读取失败；未提交任务。")
+    flag = args[0]
+    if re.search(r"(?m)^\s*" + re.escape(flag) + r"(?:[ =\t]|$)", text):
+        return args
+    cloud_only = "Cloud media-processing commands" in text
+    if flag == "--cloud" and cloud_only:
+        return args[1:]
+    raise MediaKitCompatibilityError(
+        f"当前 CLI 未声明支持 {flag}；未提交任务，也不会自动改为付费云端调用。"
+    )
+
+
 def run_cli(
     arguments: Sequence[str],
     *,
@@ -107,7 +140,7 @@ def run_cli(
 ) -> CommandResult:
     """Run MediaKit CLI without invoking a shell."""
     executable = find_cli()
-    command = [executable, *map(str, arguments)]
+    command = [executable, *normalize_mode_arguments(executable, arguments)]
     process_env = os.environ.copy()
     if env:
         process_env.update(env)
