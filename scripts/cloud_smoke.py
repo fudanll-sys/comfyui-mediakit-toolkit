@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import secrets
 import subprocess
 import sys
 import tempfile
@@ -75,15 +76,32 @@ def _create_fixture(path: Path, duration_seconds: float) -> None:
         )
 
 
-def run_smoke(*, work_dir: Path, duration_seconds: float, poll_interval: int, max_attempts: int) -> SmokeResult:
+def run_smoke(
+    *,
+    work_dir: Path,
+    duration_seconds: float,
+    poll_interval: int,
+    max_attempts: int,
+    client_token: str | None = None,
+) -> SmokeResult:
     require_api_key()
     fixture = work_dir / "smoke-input.mp4"
     output = work_dir / "smoke-output.mp4"
     _create_fixture(fixture, duration_seconds)
 
+    # One fresh idempotency token per smoke run. A retried submit with this
+    # same token returns the original task instead of creating a second billable
+    # task; a new run always mints a different token.
+    token = client_token or ("mediakit-smoke-" + secrets.token_hex(16))
+
     # Trim a 2s clip to 1s: the smallest valid cloud editing task.
     submit_payload = run_json_command(
-        build_trim_arguments(fixture, start_time=0.0, end_time=1.0),
+        build_trim_arguments(
+            fixture,
+            start_time=0.0,
+            end_time=1.0,
+            client_token=token,
+        ),
         timeout=300,
     )
     task_id = extract_task_id(submit_payload)
@@ -128,6 +146,15 @@ def main() -> int:
     parser.add_argument("--duration-seconds", type=float, default=2.0)
     parser.add_argument("--poll-interval-seconds", type=int, default=5)
     parser.add_argument("--max-poll-attempts", type=int, default=60)
+    parser.add_argument(
+        "--client-token",
+        default="",
+        help=(
+            "Optional idempotency token (max 64 ASCII chars). A fresh token is "
+            "minted per run; pass a fixed value only when deliberately retrying "
+            "the same paid submission so the backend does not double-bill."
+        ),
+    )
     args = parser.parse_args()
 
     if args.duration_seconds <= 1.0:
@@ -147,6 +174,7 @@ def main() -> int:
             duration_seconds=args.duration_seconds,
             poll_interval=args.poll_interval_seconds,
             max_attempts=args.max_poll_attempts,
+            client_token=args.client_token or None,
         )
     finally:
         if context is not None:

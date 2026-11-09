@@ -478,15 +478,24 @@ python -m unittest discover -s tests -v
 `scripts/cloud_smoke.py`，用于验证真实云端链路（鉴权、异步提交、轮询、结果下载）：
 
 - 工作流只有 `workflow_dispatch`，不会在 push 或 PR 时自动运行；
+- 触发时必须把 `confirm_billing` 显式勾选为 `true`，表示知悉会产生一次真实计费，
+  否则在任何付费调用之前直接失败；
+- 同一时间只允许一个冒烟运行（固定并发组），新触发会排队/取消，避免并发产生
+  多个付费任务；
+- 每次运行只提交一个最小的 1 秒 `trim-video` 付费任务，并携带幂等
+  `client_token`：自动生成的 token 保证每次是独立新任务；若要重试同一次提交，
+  可在手动触发时传入固定 token，后端 24 小时幂等会返回原任务而不是重复计费；
 - 运行前必须在仓库 Settings → Secrets and variables → Actions 配置
   `MEDIAKIT_API_KEY`，密钥只通过 GitHub Secrets 注入，不写入代码或日志；
-- 每次只提交一个最小的 1 秒 `trim-video` 付费任务，可能产生少量费用；
 - 输出的签名 URL 查询参数和 API Key 均会脱敏，失败时只上传诊断产物。
 
-本地手动运行（需要自行保证已安装 `mediakit-cli`、`ffmpeg` 并完成鉴权）：
+本地手动运行（需要自行保证已安装 `mediakit-cli`、`ffmpeg` 并完成鉴权；本地运行
+同样会产生一次真实计费）：
 
 ```bash
 python scripts/cloud_smoke.py --duration-seconds 2
+# 重试同一次提交、避免重复计费时显式传入固定 token：
+python scripts/cloud_smoke.py --client-token mediakit-smoke-xxxx
 ```
 
 Registry 发布与安全自查见 [SECURITY.md](./SECURITY.md)。

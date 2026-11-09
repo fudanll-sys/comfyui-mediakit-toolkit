@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.4 - 2026-11-09
+
+### 付费冒烟安全加固（手动工作流）
+- 工作流新增必填布尔输入 `confirm_billing`（默认 false）：只有显式确认真实计费
+  才会继续，在任何付费调用前拦截误触发。
+- 并发组从按 run_id 改为固定 `mediakit-cloud-smoke`，全局同一时间只允许一个付费
+  冒烟运行，杜绝并发产生多个计费任务。
+- 冒烟提交携带幂等 `client_token`：脚本每次运行自动生成新 token（独立新任务）；
+  工作流/CLI 支持传入固定 token，重试同一次提交时由后端 24 小时幂等返回原任务，
+  避免重复计费。参数校验要求非空 ASCII 且不超过 64 字符。
+- 新增 token 校验单测；中英文 README 更新计费确认、并发与幂等说明。
+
 ## 0.5.3 - 2026-11-09
 
 - Harden cloud polling in the production orchestrator (`_run_cloud_task` /

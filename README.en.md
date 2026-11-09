@@ -485,18 +485,28 @@ The repository ships a `Cloud Smoke (paid, manual)` GitHub Actions workflow and
 submission, polling, and result download):
 
 - The workflow uses `workflow_dispatch` only; it never runs on push or pull requests.
+- You must explicitly set `confirm_billing` to `true` when dispatching it,
+  acknowledging that the run creates a real billable task; otherwise it fails
+  before any paid call.
+- A fixed concurrency group allows only one smoke run at a time, so concurrent
+  dispatches can never create multiple billable tasks.
+- Each run submits exactly one minimal 1-second billable `trim-video` task with
+  an idempotent `client_token`: an auto-minted token makes each run a distinct new
+  task, while passing a fixed token when retrying the same submission makes the
+  backend return the original task (24h idempotency) instead of double-billing.
 - Before running it, configure `MEDIAKIT_API_KEY` under Settings → Secrets and
   variables → Actions. The key is injected only through GitHub Secrets and is never
   written to code or logs.
-- Each run submits exactly one minimal 1-second billable `trim-video` task and may
-  incur a small charge.
 - API keys and signed-URL query parameters are redacted; only diagnostic artifacts
   are uploaded on failure.
 
-Run it locally after installing `mediakit-cli`, `ffmpeg`, and authenticating:
+Run it locally after installing `mediakit-cli`, `ffmpeg`, and authenticating (a
+local run also creates one real billable task):
 
 ```bash
 python scripts/cloud_smoke.py --duration-seconds 2
+# Retry the same submission without double-billing by passing a fixed token:
+python scripts/cloud_smoke.py --client-token mediakit-smoke-xxxx
 ```
 
 See [SECURITY.md](./SECURITY.md) for the Registry publishing and security self-review.

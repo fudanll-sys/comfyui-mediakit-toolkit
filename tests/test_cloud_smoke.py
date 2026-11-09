@@ -19,7 +19,9 @@ from mediakit_toolkit.errors import MediaKitConfigurationError, MediaKitTaskErro
 class CloudSmokeArgumentTests(unittest.TestCase):
     def test_trim_arguments_use_cloud_and_one_second_window(self):
         input_path = Path("in.mp4")
-        args = build_trim_arguments(input_path, start_time=0.0, end_time=1.0)
+        args = build_trim_arguments(
+            input_path, start_time=0.0, end_time=1.0, client_token="smoke-token-1"
+        )
         self.assertEqual(
             args,
             [
@@ -31,12 +33,29 @@ class CloudSmokeArgumentTests(unittest.TestCase):
                 "0.0",
                 "--end-time",
                 "1.0",
+                "--client-token",
+                "smoke-token-1",
             ],
         )
 
+    def test_rejects_invalid_client_token(self):
+        for token in ("", "中文-token" * 10, "x" * 65):
+            with self.subTest(token=token), self.assertRaises(MediaKitTaskError):
+                build_trim_arguments(
+                    Path("in.mp4"),
+                    start_time=0.0,
+                    end_time=1.0,
+                    client_token=token,
+                )
+
     def test_rejects_inverted_trim_window(self):
         with self.assertRaises(MediaKitTaskError):
-            build_trim_arguments(Path("in.mp4"), start_time=1.0, end_time=1.0)
+            build_trim_arguments(
+                Path("in.mp4"),
+                start_time=1.0,
+                end_time=1.0,
+                client_token="smoke-token-1",
+            )
 
     def test_poll_arguments_are_bounded(self):
         args = build_poll_arguments("task-1", poll_interval_seconds=5, max_poll_attempts=60)

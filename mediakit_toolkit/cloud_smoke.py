@@ -99,10 +99,21 @@ def build_trim_arguments(
     *,
     start_time: float,
     end_time: float,
+    client_token: str,
 ) -> list[str]:
-    """Build the smallest paid cloud trim command used by the smoke workflow."""
+    """Build the smallest paid cloud trim command used by the smoke workflow.
+
+    An explicit ``--client-token`` makes the single paid submission idempotent:
+    if the submit step is retried with the same token, the backend returns the
+    original task instead of charging for a second task (24h default
+    idempotency). A brand-new smoke run generates a fresh token.
+    """
     if end_time <= start_time:
         raise MediaKitTaskError("冒烟裁剪结束时间必须大于开始时间。")
+    if not client_token or not client_token.isascii() or len(client_token) > 64:
+        raise MediaKitTaskError(
+            "client_token 必须是非空 ASCII 字符串且长度不超过 64。"
+        )
     # CLI 0.2.2's public binary is cloud-only and does not accept a global
     # ``--cloud`` mode flag. The smoke test therefore uses the domain command
     # directly; it still targets the cloud endpoint because no local mode exists.
@@ -115,6 +126,8 @@ def build_trim_arguments(
         str(start_time),
         "--end-time",
         str(end_time),
+        "--client-token",
+        client_token,
     ]
 
 
