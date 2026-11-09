@@ -45,3 +45,25 @@ curl -s https://api.comfy.org/nodes/mediakit-toolkit/versions/<version> \
 - 新版本应进入正常可安装状态；若仍为 `NodeVersionStatusFlagged`，公开 API
   不提供原因，需要通过 Registry Publisher 后台或官方支持渠道处理，不能在
   对外材料中宣称“已审核通过”。
+
+## 0.5.x 版本 Flagged 排查记录
+
+- 现象：节点本身为 `NodeStatusActive`，但 0.5.0/0.5.1/0.5.2 版本均为
+  `NodeVersionStatusFlagged`，0.5.3 发布后进入 `NodeVersionStatusPending`；
+  公开 API 的 `status_reason` 始终为空。
+- 关键线索：`GET /comfy-nodes?node_id=mediakit-toolkit` 的 `total=0`，即 Registry
+  静态分析没有从发布包提取到任何节点。对比正常上架的 V1 包（如
+  comfyui-videohelpersuite，`total=40`），其根 `__init__.py` 直接导出
+  `NODE_CLASS_MAPPINGS`；本包只使用 V3 的 `comfy_entrypoint`，Registry 的静态
+  索引器目前无法据此提取节点，这是最可能的 Flagged 根因。运行时 ComfyUI 加载器
+  （nodes.py）已支持 V3，因此本地/Manager 安装后可正常加载，差异仅在 Registry
+  的离线提取链路。
+- 已在仓库侧修复的审核项：补充方形图标 `[tool.comfy].Icon`、`SECURITY.md`
+  安全自查（无 eval/exec、无运行时 pip、无混淆、无维护者中转、Key/URL 脱敏）。
+- 仍需人工处理：登录
+  [Registry Publisher 后台](https://registry.comfy.org/publishers/fudanll/nodes/mediakit-toolkit)
+  查看具体 `status_reason`，或通过官方 Discord/支持渠道确认是否因 V3 静态提取
+  缺失而 Flagged；若确认，再决定是否补充静态 `node_list.json` / V1 兼容映射
+  （需评估与现有 V3 入口并存的加载顺序，避免双重注册）。
+- 在状态转为 `NodeVersionStatusActive` 前，对外只能描述为“已上传、待审核”，
+  不得宣称“Registry 审核通过/正式上架”。
