@@ -272,6 +272,19 @@ Scene · 场景切分   (or Highlight · 高光片段提取 / Metadata · 视频
 Importable workflows are available in [`example_workflows`](./example_workflows).
 Select your own authorized local video after importing one.
 
+Three ready-to-import graphs for the most common jobs:
+
+| Job | Workflow |
+| --- | --- |
+| Erase burned-in subtitles / on-screen text | [`mediakit_erase_video_subtitle_pro.json`](./example_workflows/mediakit_erase_video_subtitle_pro.json) |
+| Video enhancement (standard) | [`mediakit_video_enhance.json`](./example_workflows/mediakit_video_enhance.json) |
+| Generative restore | [`mediakit_video_enhance_generative.json`](./example_workflows/mediakit_video_enhance_generative.json) |
+
+Before running, check what a job will cost:
+[`docs/marketing/cost-comparison.html`](./docs/marketing/cost-comparison.html) converts each node
+run into money at official list prices, and shows the three levers that cut the bill — trim first,
+lower the output resolution, pick the right tool version.
+
 ## Node parameters
 
 ### ASR · 语音转字幕

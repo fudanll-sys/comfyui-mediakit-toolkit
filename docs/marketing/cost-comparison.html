@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediaKit 视频 AI 成本对比 · ComfyUI 插件</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230E5A52'/%3E%3Cpath d='M8 22V10h3v9h9v3H8z' fill='%23F2F4F3'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --paper:#F2F4F3;
+    --ink:#121A19;
+    --muted:#5A6864;
+    --line:#C9D2CE;
+    --accent:#0E5A52;
+    --warn:#A6402E;
+    --tint:#E4EAE7;
+    --mono:ui-monospace,SFMono-Regular,Menlo,"Cascadia Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",system-ui,sans-serif;
+    font-size:16px;line-height:1.65;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+  header.mast{border-bottom:1px solid var(--line);padding:28px 0 22px}
+  .eyebrow{font-size:13px;color:var(--muted);letter-spacing:.04em}
+  h1{font-size:clamp(28px,6vw,52px);line-height:1.16;letter-spacing:-.02em;margin:10px 0 14px;font-weight:700;max-width:22em}
+  .standfirst{font-size:17px;max-width:34em;color:var(--ink);margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:18px;font-size:13px;color:var(--muted);font-family:var(--mono)}
+  h2{font-size:clamp(20px,3.4vw,26px);letter-spacing:-.01em;margin:0 0 6px;font-weight:700}
+  .sec{padding:36px 0;border-bottom:1px solid var(--line)}
+  .sec > p.intro{margin:6px 0 22px;color:var(--muted);max-width:38em}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  /* 价格矩阵 */
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  .grid{display:grid;grid-template-columns:minmax(120px,1.3fr) repeat(4,minmax(84px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);min-width:480px}
+  .grid > div{background:var(--paper);padding:11px 12px}
+  .grid .h{font-size:12px;color:var(--muted);line-height:1.4}
+  .grid .rh{font-size:14px;font-weight:600;display:flex;flex-direction:column;gap:2px}
+  .grid .rh span{font-size:11px;font-weight:400;color:var(--muted);font-family:var(--mono)}
+  .cell{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:15px;text-align:right}
+  .cell small{display:block;font-size:11px;color:var(--muted);font-family:inherit}
+  .legend{display:flex;align-items:center;gap:10px;margin-top:12px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+  .bar{display:flex;align-items:center;gap:0}
+  .bar i{display:block;width:26px;height:10px;border:0}
+
+  /* 计算器 */
+  .calc{display:grid;gap:22px;grid-template-columns:1fr}
+  .fields{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+  .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .field label{font-size:13px;color:var(--muted)}
+  select,input[type=number]{
+    width:100%;min-height:44px;padding:8px 10px;border:1px solid var(--line);
+    background:#FBFCFB;color:var(--ink);font:inherit;font-size:16px;border-radius:0;
+  }
+  select:focus,input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  input[type=number]{font-family:var(--mono)}
+  .field.wide{grid-column:1/-1}
+  .toggle-row{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--line);background:#FBFCFB;font-size:14px;cursor:pointer}
+  .chip[aria-pressed=true]{background:var(--accent);color:#F4F8F6;border-color:var(--accent)}
+
+  .result{border:1px solid var(--ink);padding:18px 18px 16px;background:#FBFCFB}
+  .rl{font-size:12px;color:var(--muted);letter-spacing:.04em}
+  .big{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:clamp(34px,8vw,56px);line-height:1.1;font-weight:600;margin:2px 0 2px}
+  .big em{font-style:normal;font-size:18px;color:var(--muted);margin-left:4px}
+  .formula{font-family:var(--mono);font-size:13px;color:var(--ink);background:var(--tint);padding:9px 10px;margin-top:12px;word-break:break-word}
+  .basis{font-size:13px;color:var(--muted);margin-top:10px}
+  .rowact{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  button{
+    font:inherit;font-size:15px;min-height:44px;padding:0 16px;cursor:pointer;
+    border:1px solid var(--ink);background:var(--ink);color:#F6F8F7;border-radius:0;
+  }
+  button.ghost{background:transparent;color:var(--ink)}
+  .toast{font-size:13px;color:var(--accent);align-self:center;min-height:20px}
+
+  /* 规则 */
+  .rules{display:grid;gap:0;border-top:1px solid var(--line)}
+  .rule{display:grid;grid-template-columns:44px 1fr;gap:14px;padding:20px 0;border-bottom:1px solid var(--line)}
+  .rule .k{font-family:var(--mono);font-size:13px;color:var(--muted);padding-top:3px}
+  .rule h3{margin:0 0 6px;font-size:17px}
+  .rule p{margin:0;color:var(--muted);max-width:42em}
+  .rule p b{color:var(--ink);font-weight:600}
+  mark{background:transparent;color:var(--warn);font-weight:600}
+
+  /* 明细表 */
+  table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:14px}
+  caption{text-align:left;font-size:13px;color:var(--muted);padding-bottom:10px}
+  th,td{border-bottom:1px solid var(--line);padding:10px 8px;vertical-align:top;text-align:left}
+  th{font-size:12px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--ink)}
+  td.money{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  td.node{font-family:var(--mono);font-size:12px;color:var(--muted);word-break:break-word}
+  tbody tr:hover{background:var(--tint)}
+
+  .note{background:#FBFCFB;border:1px solid var(--line);border-left:4px solid var(--accent);padding:14px 16px;font-size:14px}
+  .note p{margin:0 0 8px}
+  .note p:last-child{margin:0}
+  footer{padding:26px 0 44px;font-size:12px;color:var(--muted);line-height:1.7}
+  footer a{color:var(--accent)}
+  a{color:var(--accent)}
+  @media (min-width:768px){
+    .calc{grid-template-columns:1.1fr .9fr;align-items:start}
+    .fields{grid-template-columns:1fr 1fr}
+    .wrap{padding:0 28px}
+    header.mast{padding-top:40px}
+  }
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="eyebrow">ComfyUI MediaKit Toolkit · 成本说明</div>
+    <h1>同一分钟的视频，价格可能差 20 倍</h1>
+    <p class="standfirst">画质增强选标准版还是专业版、输出 720P 还是 4K，都会直接改变账单。这份说明把官方刊例价换算成 ComfyUI 节点里的每一次运行，并给出一条不牺牲效果的省钱路径。</p>
+    <div class="meta">
+      <span>价格口径：火山引擎 AI MediaKit 刊例价</span>
+      <span>统一单位：元 / 分钟</span>
+      <span>数据更新：2026-11-05</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="sec">
+    <h2>先看清价格结构</h2>
+    <p class="intro">画质增强按“基准单价 × 分辨率与帧率系数”计费。下表是输出帧率不超过 30fps 时的折算单价，颜色越深越贵。</p>
+
+    <div class="scroll">
+      <div class="grid" id="matrix">
+        <div class="h">工具版本</div>
+        <div class="h">720P</div>
+        <div class="h">1080P</div>
+        <div class="h">2K</div>
+        <div class="h">4K</div>
+
+        <div class="rh">增强 · 标准版<span>基准 0.75</span></div>
+        <div class="cell" data-p="0.75">0.75</div>
+        <div class="cell" data-p="1.5">1.50</div>
+        <div class="cell" data-p="3">3.00</div>
+        <div class="cell" data-p="6">6.00</div>
+
+        <div class="rh">增强 · 专业版<span>基准 0.75</span></div>
+        <div class="cell" data-p="7.5">7.50</div>
+        <div class="cell" data-p="15">15.00</div>
+        <div class="cell" data-p="30">30.00</div>
+        <div class="cell" data-p="60">60.00</div>
+
+        <div class="rh">增强 · 大模型版<span>基准 2.5</span></div>
+        <div class="cell" data-p="2.5">2.50</div>
+        <div class="cell" data-p="5">5.00</div>
+        <div class="cell" data-p="10">10.00</div>
+        <div class="cell" data-p="20">20.00</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span>低</span>
+      <span class="bar" id="legendbar"></span>
+      <span>高</span>
+      <span style="margin-left:8px">帧率超过 30fps 后系数翻倍递增，60fps 约为 30fps 的 2 倍</span>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>算一次你的实际花费</h2>
+    <p class="intro">选择要用的节点，填入时长，页面按官方公式即时结算。结果只是刊例价估算，不含资源包折扣与其他工具费用。</p>
+
+    <div class="calc">
+      <form class="fields" id="calcForm" onsubmit="return false">
+        <div class="field wide">
+          <label for="tool">工具 / 对应节点</label>
+          <select id="tool">
+            <option value="enhance-standard">Enhance · 视频增强（标准版）</option>
+            <option value="enhance-professional">Enhance · 视频增强（专业版）</option>
+            <option value="enhance-ultra">Enhance Ultra · 视频增强（大模型版）</option>
+            <option value="erase-standard">Erase Subtitle · 字幕擦除（标准版）</option>
+            <option value="erase-pro">Erase Subtitle Pro · 字幕擦除（增强版）</option>
+            <option value="matte">Matte · 人像 / 绿幕抠图</option>
+            <option value="asr">ASR · 语音转字幕</option>
+            <option value="ocr">OCR · 视频识别字幕</option>
+            <option value="scene">Scene · 场景切分</option>
+            <option value="highlight">Highlight · 高光片段提取</option>
+            <option value="metadata">Metadata · 视频元信息</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="minutes">视频时长（分钟）</label>
+          <input id="minutes" type="number" min="0.1" max="600" step="0.1" value="10">
+        </div>
+
+        <div class="field">
+          <label for="count">任务数量</label>
+          <input id="count" type="number" min="1" max="1000" step="1" value="1">
+        </div>
+
+        <div class="field" id="resWrap">
+          <label for="res">输出分辨率</label>
+          <select id="res">
+            <option value="720p">720P 及以下</option>
+            <option value="1080p" selected>1080P 及以下</option>
+            <option value="2k">2K 及以下</option>
+            <option value="4k">4K 及以下</option>
+          </select>
+        </div>
+
+        <div class="field" id="fpsWrap">
+          <label for="fps">输出帧率</label>
+          <select id="fps">
+            <option value="0" selected>不超过 30fps</option>
+            <option value="1">30–60fps</option>
+            <option value="2">60–120fps</option>
+          </select>
+        </div>
+      </form>
+
+      <aside class="result" aria-live="polite">
+        <div class="rl">本次估算费用</div>
+        <div class="big" id="total">15.00<em>元</em></div>
+        <div class="formula" id="formula">10 分钟 × 系数 2 × 0.75 元/分钟 = 15.00 元</div>
+        <div class="basis" id="basis">按输出时长计费；分辨率取输出短边档位。</div>
+        <div class="rowact">
+          <button type="button" id="copyBtn">复制估算结果</button>
+          <button type="button" id="resetBtn" class="ghost">恢复默认</button>
+          <span class="toast" id="toast"></span>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>三条能立刻省钱的规则</h2>
+    <div class="rules">
+      <div class="rule">
+        <div class="k">01</div>
+        <div>
+          <h3>按需时长计费，先裁再处理</h3>
+          <p>画质增强、字幕擦除、ASR 都按时长算钱。一段 10 分钟素材里只有 1 分钟要交付，先 <b>Trim · 视频裁剪</b> 再送增强，1080P 标准版从 <b>15 元</b> 降到 <mark>1.5 元</mark>，效果不受影响。</p>
+        </div>
+      </div>
+      <div class="rule">
+        <div class="k">02</div>
+        <div>
+          <h3>分辨率是第一杠杆</h3>
+          <p>同一版本下，4K 单价是 720P 的 <b>8 倍</b>。如果最终投放在手机端，输出 1080P 通常已经够用；只有在需要继续二次剪辑或大屏回看时，4K 才值得付这笔钱。</p>
+        </div>
+      </div>
+      <div class="rule">
+        <div class="k">03</div>
+        <div>
+          <h3>版本选对，别默认开最贵的</h3>
+          <p>同样 1080P、30fps，标准版 <b>1.5 元/分钟</b>，专业版 <b>15 元/分钟</b>，相差 10 倍。日常素材清洗先用标准版看效果，只有画质缺陷明显、需要重建细节时再上专业版或大模型版。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>哪些调用不产生云端费用</h2>
+    <div class="note">
+      <p><b>先检查 CLI 能力。</b>编辑类节点（裁剪、拼接、变速、旋转、滤镜、抽帧等）提供 <span class="num">auto</span> 模式：本机 <span class="num">mediakit-cli</span> 支持该能力本地模式时，任务在本机完成，不产生云端费用。</p>
+      <p><b>但不要默认 auto 就免费。</b>CLI 0.2.2 的编辑域只支持云端，此时 <span class="num">auto</span> 会回退成付费云任务；编辑类另有独立的“剪辑工具计费”口径，与本页表格不同。</p>
+      <p><b>资源包可以降单价。</b>多媒体处理资源包以字幕擦除（精细化版）1 元/分钟为定价基准，其他工具按抵扣系数折算；10 分钟档约为 8 折。适合用量稳定的团队，而不是试水用户。</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>节点与计费口径对照</h2>
+    <div class="scroll">
+      <table>
+        <caption>下表仅列视频 AI 工具；剪辑、音频、图像工具有各自计费规则，未包含在内。</caption>
+        <colgroup>
+          <col style="width:31%">
+          <col style="width:27%">
+          <col style="width:17%">
+          <col style="width:25%">
+        </colgroup>
+        <thead>
+          <tr><th>节点</th><th>计费项</th><th>单价</th><th>计费基准</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Enhance · 视频增强</td><td>画质增强 标准版</td><td class="money">0.75 起</td><td>输出时长 × 系数</td></tr>
+          <tr><td>Enhance · 视频增强</td><td>画质增强 专业版</td><td class="money">7.50 起</td><td>输出时长 × 系数</td></tr>
+          <tr><td>Enhance Ultra</td><td>画质增强 大模型版</td><td class="money">2.50 起</td><td>输出时长 × 系数</td></tr>
+          <tr><td>Erase Subtitle</td><td>字幕擦除 标准版</td><td class="money">0.40</td><td>累计擦除时长</td></tr>
+          <tr><td>Erase Subtitle Pro</td><td>字幕擦除 精细化版</td><td class="money">1.00</td><td>累计擦除时长</td></tr>
+          <tr><td>Matte · 人像 / 绿幕抠图</td><td>智能抠图</td><td class="money">1.00 起</td><td>输出时长 × 分辨率系数</td></tr>
+          <tr><td>ASR · 语音转字幕</td><td>语音转字幕</td><td class="money">0.03</td><td>输入时长</td></tr>
+          <tr><td>OCR · 视频识别字幕</td><td>视频识别字幕</td><td class="money">0.25</td><td>输入时长</td></tr>
+          <tr><td>Scene · 场景切分</td><td>场景切分</td><td class="money">0.02</td><td>输入时长</td></tr>
+          <tr><td>Highlight · 高光片段提取</td><td>高光片段提取</td><td class="money">1.00</td><td>输入时长</td></tr>
+          <tr><td>Metadata · 视频元信息</td><td>视频元信息获取</td><td class="money">0.10 / 千次</td><td>成功处理次数</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>单价与系数来自火山引擎 AI MediaKit 视频工具计费文档（更新于 2026-11-05）：<a href="https://docs.volcengine.com/docs/intelligent-processing/video-tool-billing?lang=zh" target="_blank" rel="noopener">docs.volcengine.com · 视频工具计费</a>；资源包折扣参见<a href="https://docs.volcengine.com/docs/intelligent-processing/resource-pack?lang=zh" target="_blank" rel="noopener">资源包说明</a>。</p>
+    <p>本页为估算工具，不构成报价。实际账单以火山引擎控制台结算为准；分辨率档位按输出视频短边判定，毫秒级时常在出账时换算为分钟。</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var ENHANCE = {
+    'enhance-standard':   {name:'画质增强 · 标准版', base:0.75, coef:{'720p':[1,2,4],'1080p':[2,4,8],'2k':[4,8,16],'4k':[8,16,32]}, label:'标准版'},
+    'enhance-professional':{name:'画质增强 · 专业版', base:0.75, coef:{'720p':[10,20,40],'1080p':[20,40,80],'2k':[40,80,160],'4k':[80,160,320]}, label:'专业版'},
+    'enhance-ultra':      {name:'画质增强 · 大模型版', base:2.5, coef:{'720p':[1,2,4],'1080p':[2,4,8],'2k':[4,8,16],'4k':[8,16,32]}, label:'大模型版'}
+  };
+  var MATTE = {'720p':1,'1080p':1.5,'2k':3,'4k':4};
+  var FLAT = {
+    'erase-standard':{rate:0.4, unit:'累计擦除时长', out:false},
+    'erase-pro':{rate:1.0, unit:'累计擦除时长', out:true},
+    'asr':{rate:0.03, unit:'输入时长', out:false},
+    'ocr':{rate:0.25, unit:'输入时长', out:false},
+    'scene':{rate:0.02, unit:'输入时长', out:false},
+    'highlight':{rate:1.0, unit:'输入时长', out:false}
+  };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var tool=$('tool'), minutes=$('minutes'), count=$('count'), res=$('res'), fps=$('fps');
+  var resWrap=$('resWrap'), fpsWrap=$('fpsWrap');
+
+  function money(n){
+    if(!isFinite(n) || n<0) return '—';
+    if(n>0 && n<0.01) return n.toFixed(4);
+    return n.toFixed(2);
+  }
+  function syncVisibility(){
+    var t=tool.value, isEnhance=!!ENHANCE[t], isMatte=(t==='matte');
+    resWrap.style.display = (isEnhance||isMatte) ? '' : 'none';
+    fpsWrap.style.display = isEnhance ? '' : 'none';
+    if(t==='metadata'){ resWrap.style.display='none'; fpsWrap.style.display='none'; }
+    if(isEnhance && t==='enhance-ultra'){
+      Array.prototype.forEach.call(res.options,function(o){
+        o.disabled = (o.value==='2k' || o.value==='4k');
+      });
+      if(res.value==='2k'||res.value==='4k') res.value='1080p';
+    }else{
+      Array.prototype.forEach.call(res.options,function(o){ o.disabled=false; });
+    }
+  }
+
+  function compute(){
+    syncVisibility();
+    var t=tool.value;
+    var mins=Math.max(0.1, parseFloat(minutes.value)||0);
+    var n=Math.max(1, Math.round(parseFloat(count.value)||1));
+    var total=0, formula='', basis='';
+
+    if(t==='metadata'){
+      total = n/1000*0.1;
+      formula = n+' 次 / 1000 × 0.10 元 = '+money(total)+' 元';
+      basis='按成功处理次数计费，与视频时长无关；每千次 0.10 元。';
+    }else if(ENHANCE[t]){
+      var e=ENHANCE[t], f=parseInt(fps.value,10);
+      var c=e.coef[res.value][f];
+      total = mins*c*e.base*n;
+      formula = mins+' 分钟 × 系数 '+c+' × '+e.base+' 元/分钟'+(n>1?' × '+n+' 个任务':'')+' = '+money(total)+' 元';
+      basis='画质增强（'+e.label+'）按输出时长计费；分辨率档位按输出短边判定，当前取 '+res.options[res.selectedIndex].text+'。';
+    }else if(t==='matte'){
+      var rate=MATTE[res.value];
+      total = mins*rate*n;
+      formula = mins+' 分钟 × '+rate+' 元/分钟'+(n>1?' × '+n+' 个任务':'')+' = '+money(total)+' 元';
+      basis='智能抠图按输出时长计费；节点未暴露分辨率参数，实际档位由源视频输出决定。';
+    }else{
+      var fl=FLAT[t];
+      total = mins*fl.rate*n;
+      formula = mins+' 分钟 × '+fl.rate+' 元/分钟'+(n>1?' × '+n+' 个任务':'')+' = '+money(total)+' 元';
+      basis='按'+fl.unit+'计费'+(fl.out?'（输出与原片等长，未指定擦除时间段时等于整段时长）。':'；时长取自源视频。');
+    }
+
+    $('total').innerHTML = money(total)+'<em>元</em>';
+    $('formula').textContent = formula;
+    $('basis').textContent = basis;
+    $('toast').textContent='';
+  }
+
+  // 热度着色
+  var cells=document.querySelectorAll('#matrix .cell');
+  var maxP=0;
+  Array.prototype.forEach.call(cells,function(c){ maxP=Math.max(maxP, parseFloat(c.dataset.p)); });
+  Array.prototype.forEach.call(cells,function(c){
+    var p=parseFloat(c.dataset.p);
+    var a=0.08+0.52*(Math.log(p/0.75+1)/Math.log(maxP/0.75+1));
+    c.style.background='rgba(14,90,82,'+a.toFixed(3)+')';
+    c.style.color = a>0.36 ? '#F4F8F6' : '#121A19';
+  });
+  var bar=$('legendbar');
+  for(var i=0;i<7;i++){
+    var s=document.createElement('i');
+    s.style.background='rgba(14,90,82,'+(0.08+0.52*(i/6)).toFixed(3)+')';
+    bar.appendChild(s);
+  }
+
+  ['change','input'].forEach(function(ev){
+    tool.addEventListener(ev, compute);
+    minutes.addEventListener(ev, compute);
+    count.addEventListener(ev, compute);
+    res.addEventListener(ev, compute);
+    fps.addEventListener(ev, compute);
+  });
+
+  $('copyBtn').addEventListener('click',function(){
+    var text='MediaKit 估算：'+$('total').textContent.replace(/元$/,'').trim()+' 元｜'+$('formula').textContent+'｜'+$('basis').textContent;
+    var done=function(){ $('toast').textContent='已复制'; };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done,function(){ $('toast').textContent='复制失败，请手动选择结果'; });
+    }else{
+      var r=document.createElement('textarea');
+      r.value=text; document.body.appendChild(r); r.select();
+      try{ document.execCommand('copy'); done(); }catch(e){ $('toast').textContent='复制失败，请手动选择结果'; }
+      document.body.removeChild(r);
+    }
+  });
+
+  $('resetBtn').addEventListener('click',function(){
+    tool.value='enhance-standard'; minutes.value=10; count.value=1; res.value='1080p'; fps.value='0';
+    compute();
+  });
+
+  compute();
+})();
+</script>
+</body>
+</html>

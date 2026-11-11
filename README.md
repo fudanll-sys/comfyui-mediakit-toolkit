@@ -273,6 +273,18 @@ Scene · 场景切分   （或 Highlight · 高光片段提取 / Metadata · 视
 仓库中的 [`example_workflows`](./example_workflows) 提供可导入的示例工作流。
 导入后请重新选择你有权处理的本地视频。
 
+三个最常用的导入即用模板：
+
+| 场景 | 模板 |
+| --- | --- |
+| 擦除硬字幕 / 画面文字 | [`mediakit_erase_video_subtitle_pro.json`](./example_workflows/mediakit_erase_video_subtitle_pro.json) |
+| 画质增强（标准版） | [`mediakit_video_enhance.json`](./example_workflows/mediakit_video_enhance.json) |
+| 大模型增强修复 | [`mediakit_video_enhance_generative.json`](./example_workflows/mediakit_video_enhance_generative.json) |
+
+运行前想先看清花多少钱，见成本说明页
+[`docs/marketing/cost-comparison.html`](./docs/marketing/cost-comparison.html)：它按官方刊例价把每个节点的
+一次运行换算成金额，并给出“先裁后处理”“降分辨率”“选对版本”三条省钱路径。
+
 ## 节点参数
 
 ### ASR · 语音转字幕
